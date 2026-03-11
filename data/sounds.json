@@ -1,0 +1,5 @@
+[
+  { "file": "caw",     "sequence": "caw",      "label": "Caw" },
+  { "file": "flap",    "sequence": "wingflap", "label": "Wing Flap" },
+  { "file": "ambient", "sequence": "none",     "label": "Ambient" }
+]

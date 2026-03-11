@@ -1,0 +1,15 @@
+{
+  "beak_closed":  1500,
+  "beak_open":    1900,
+  "head_centre":  1500,
+  "head_left":    1200,
+  "head_right":   1800,
+  "head_up":      1600,
+  "head_down":    1400,
+  "wing_fold":    1000,
+  "wing_half":    1500,
+  "wing_full":    2000,
+  "bob_mid":      1500,
+  "bob_up":       1700,
+  "bob_down":     1300
+}
