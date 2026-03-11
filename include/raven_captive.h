@@ -110,6 +110,8 @@ function save(){
                 'mqtt_device','mqtt_server','mqtt_port','wifi_ssid','wifi_password'];
   const data={};
   for(const f of fields) data[f]=document.getElementById(f).value.trim();
+  if(!data.device_name){showMsg('Device Name is required','err');return;}
+  if(!data.mdns_hostname){showMsg('Hostname is required','err');return;}
   if(!data.wifi_ssid){showMsg('WiFi SSID is required','err');return;}
   if(!data.mqtt_server){showMsg('MQTT broker address is required','err');return;}
   if(!data.mqtt_location||!data.mqtt_room||!data.mqtt_device){

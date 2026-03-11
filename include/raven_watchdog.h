@@ -13,13 +13,12 @@
 #define WDT_TIMEOUT_S   30      // seconds before forced reboot
 
 void wdtBegin() {
-    esp_task_wdt_config_t cfg = {
-        .timeout_ms = WDT_TIMEOUT_S * 1000,
-        .idle_core_mask = 0,        // don't watch idle tasks
-        .trigger_panic = true       // full panic/reboot on timeout
-    };
-    esp_task_wdt_reconfigure(&cfg);
-    esp_task_wdt_add(NULL);         // subscribe current (loop) task
+    // esp_task_wdt_init(timeout_s, panic) is the IDF 4.x API used by the installed
+    // Arduino ESP32 framework (framework-arduinoespressif32 3.x / espressif32 6.x).
+    // The IDF 5.x struct-based API (esp_task_wdt_config_t / esp_task_wdt_reconfigure)
+    // is NOT available in this toolchain and causes a compile error.
+    esp_task_wdt_init(WDT_TIMEOUT_S, true);  // timeout in seconds, panic/reboot on trip
+    esp_task_wdt_add(NULL);                   // subscribe current (loop) task
     Serial.printf("[wdt] Watchdog armed — %ds timeout\n", WDT_TIMEOUT_S);
 }
 

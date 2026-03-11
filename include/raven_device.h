@@ -78,6 +78,9 @@ bool deviceConfigLoad() {
     }
     f.close();
     deviceFromJson(doc);
+    // Fallback: if name/hostname were left blank in the portal, use the device ID
+    if (device.device_name.isEmpty())   device.device_name   = device.mqtt_device;
+    if (device.mdns_hostname.isEmpty()) device.mdns_hostname = device.mqtt_device;
     Serial.printf("[device] Loaded: %s  prefix: %s\n",
                   device.device_name.c_str(), device.mqttPrefix().c_str());
     return device.isConfigured();

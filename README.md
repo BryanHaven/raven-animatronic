@@ -10,6 +10,7 @@ ESP32-based WiFi controller for animatronic props built around the [Mr. Chicken'
 
 | Version | Summary |
 |---------|---------|
+| **v4.1.1** | Bug fixes: watchdog API corrected for installed toolchain (`esp_task_wdt_init` replaces IDF 5.x struct API); captive portal now validates Device Name and Hostname as required fields; firmware fallback populates blank name/hostname from Device ID so mDNS always starts |
 | **v4.1** | Show hardening: OTA firmware updates over WiFi, hardware watchdog (30s), MQTT last will (`offline`/`online` on `{prefix}/status`), WiFi auto-reconnect with exponential backoff |
 | **v4.0** | Captive portal first-time setup (BirdSetup AP), runtime config.json, three-level MQTT topic hierarchy (location/room/device), Settings tab in web UI, Reset to AP mode button, identity announcement on MQTT connect |
 | **v3.0** | mDNS (`http://bird.local`), live sequence indicator, SPIFFS-persisted servo calibration, keyframe sequence editor, MQTT Home Assistant discovery |
