@@ -56,15 +56,14 @@ void wsDispatch(const String& msg) {
     else if (msg == "cmd:head_centre") { headCentre(); updateLivePos(CH_HEAD_PAN, pos.head_centre); wsBroadcast("status:head_centre"); }
     else if (msg == "cmd:head_up")     { headUp();     updateLivePos(CH_HEAD_TILT, pos.head_up);  wsBroadcast("status:head_up"); }
     else if (msg == "cmd:head_down")   { headDown();   updateLivePos(CH_HEAD_TILT, pos.head_down); wsBroadcast("status:head_down"); }
-    else if (msg == "cmd:wings_out")   { wingsOut();   updateLivePos(CH_WING_L, pos.wing_full); updateLivePos(CH_WING_R, pos.wing_full); wsBroadcast("status:wings_out"); }
-    else if (msg == "cmd:wings_in")    { wingsIn();    updateLivePos(CH_WING_L, pos.wing_fold);  updateLivePos(CH_WING_R, pos.wing_fold);  wsBroadcast("status:wings_in"); }
+    else if (msg == "cmd:wings_out")   { wingsOut();   updateLivePos(CH_WING, pos.wing_full); wsBroadcast("status:wings_out"); }
+    else if (msg == "cmd:wings_in")    { wingsIn();    updateLivePos(CH_WING, pos.wing_fold);  wsBroadcast("status:wings_in"); }
     else if (msg == "cmd:bob_start")   { bobStart();   wsBroadcast("status:bob_start"); }
     else if (msg == "cmd:bob_stop")    { bobStop();    wsBroadcast("status:bob_stop"); }
     else if (msg == "cmd:neutral")     { neutral();
         for (int i = 0; i < NUM_CHANNELS; i++) livePos[i] = pos.head_centre;
-        livePos[CH_BEAK]   = pos.beak_closed;
-        livePos[CH_WING_L] = pos.wing_fold;
-        livePos[CH_WING_R] = pos.wing_fold;
+        livePos[CH_BEAK]     = pos.beak_closed;
+        livePos[CH_WING]     = pos.wing_fold;
         livePos[CH_BODY_BOB] = pos.bob_mid;
         wsBroadcast("status:neutral");
     }

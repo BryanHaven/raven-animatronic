@@ -297,7 +297,7 @@ select { background: var(--surface); border: 1px solid var(--border); border-rad
     </div>
 
     <div style="font-size:11px;color:var(--muted);margin-top:6px">
-      Channel order: [Beak, Head Pan, Head Tilt, Wing L, Wing R, Body Bob]
+      Channel order: [Beak, Head Pan, Head Tilt, Wing, —, Body Bob]
     </div>
   </div>
 
@@ -390,7 +390,7 @@ let ws, sounds = [], seqList = [], positions = {}, livePos = [1500,1500,1500,100
 let kfFrames = [], kfStartTime = null;
 
 const SEQUENCES    = ['none','caw','alert','wingflap','idle','sleep'];
-const CH_NAMES     = ['Beak','Head Pan','Head Tilt','Wing L','Wing R','Body Bob'];
+const CH_NAMES     = ['Beak','Head Pan','Head Tilt','Wing','—','Body Bob'];
 const CAL_KEYS     = ['beak_closed','beak_open','head_centre','head_left','head_right',
                       'head_up','head_down','wing_fold','wing_half','wing_full',
                       'bob_mid','bob_up','bob_down'];

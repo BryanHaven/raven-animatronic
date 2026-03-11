@@ -21,8 +21,7 @@
 #define CH_BEAK         0
 #define CH_HEAD_PAN     1
 #define CH_HEAD_TILT    2
-#define CH_WING_L       3
-#define CH_WING_R       4
+#define CH_WING         3       // single servo drives both wings mechanically
 #define CH_BODY_BOB     5
 #define NUM_CHANNELS    6
 

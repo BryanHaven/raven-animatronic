@@ -48,25 +48,18 @@ void headCentre(uint16_t t = MOVE_MED)  { servoMove(CH_HEAD_PAN,  pos.head_centr
 void headUp(uint16_t t = MOVE_MED)      { servoMove(CH_HEAD_TILT, pos.head_up,     t); }
 void headDown(uint16_t t = MOVE_MED)    { servoMove(CH_HEAD_TILT, pos.head_down,   t); }
 
-void wingsOut(uint16_t t = MOVE_MED) {
-    const uint16_t p[] = { CH_WING_L, pos.wing_full, CH_WING_R, pos.wing_full };
-    servoMoveMulti(p, 4, t);
-}
-void wingsIn(uint16_t t = MOVE_MED) {
-    const uint16_t p[] = { CH_WING_L, pos.wing_fold, CH_WING_R, pos.wing_fold };
-    servoMoveMulti(p, 4, t);
-}
+void wingsOut(uint16_t t = MOVE_MED) { servoMove(CH_WING, pos.wing_full, t); }
+void wingsIn(uint16_t t = MOVE_MED)  { servoMove(CH_WING, pos.wing_fold, t); }
 
 void neutral(uint16_t t = MOVE_MED) {
     const uint16_t p[] = {
         CH_BEAK,      pos.beak_closed,
         CH_HEAD_PAN,  pos.head_centre,
         CH_HEAD_TILT, pos.head_centre,
-        CH_WING_L,    pos.wing_fold,
-        CH_WING_R,    pos.wing_fold,
+        CH_WING,      pos.wing_fold,
         CH_BODY_BOB,  pos.bob_mid
     };
-    servoMoveMulti(p, 12, t);
+    servoMoveMulti(p, 10, t);
 }
 
 // ── Body bob task ─────────────────────────────────────────────────────────────

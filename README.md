@@ -71,7 +71,7 @@ ESP32-based WiFi controller for animatronic props built around the [Mr. Chicken'
 |-----|------|------|
 | 1× | Hitec HS-53 | Beak open/close |
 | 3× | Hitec HS-425BB | Head pan, head tilt, body bob |
-| 1× | Hitec HS-645MG | Wings (left and right) |
+| 1× | Hitec HS-645MG | Wings (single servo, both wings mechanically linked) |
 
 > The Deluxe Kit includes all servos. Check specs before substituting — voltage and torque ranges matter.
 
@@ -161,8 +161,8 @@ SSC-32U GND  ──→  ESP32 GND    ← REQUIRED — UART won't work without th
 | CH 0 | Hitec HS-53 | Beak open / close |
 | CH 1 | Hitec HS-425BB | Head pan — left / right |
 | CH 2 | Hitec HS-425BB | Head tilt — up / down |
-| CH 3 | Hitec HS-645MG | Left wing |
-| CH 4 | Hitec HS-645MG | Right wing |
+| CH 3 | Hitec HS-645MG | Wings (single servo, both wings mechanically linked) |
+| CH 4 | — | Unused |
 | CH 5 | Hitec HS-425BB | Body bob |
 
 ---
