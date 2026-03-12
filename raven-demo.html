@@ -1,0 +1,1426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Raven Animatronic Controller — Interactive Demo</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:       #080a0e;
+  --surface:  #0f1117;
+  --card:     #151820;
+  --border:   #1e2230;
+  --accent:   #7c6af7;
+  --accent2:  #4fa8e0;
+  --danger:   #e05c5c;
+  --success:  #4ade80;
+  --warn:     #f59e0b;
+  --text:     #e8e9ec;
+  --muted:    #5a6070;
+  --radius:   10px;
+  --mono:     'Space Mono', monospace;
+  --sans:     'Syne', sans-serif;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--sans);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ── HERO ── */
+.hero {
+  position: relative;
+  padding: 60px 40px 50px;
+  text-align: center;
+  overflow: hidden;
+  border-bottom: 1px solid var(--border);
+}
+.hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 60% 40% at 50% 0%, rgba(124,106,247,0.12) 0%, transparent 70%),
+    radial-gradient(ellipse 40% 60% at 20% 100%, rgba(79,168,224,0.06) 0%, transparent 60%);
+  pointer-events: none;
+}
+.hero-badge {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--accent);
+  border: 1px solid rgba(124,106,247,0.4);
+  border-radius: 20px;
+  padding: 4px 14px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  margin-bottom: 20px;
+  background: rgba(124,106,247,0.08);
+}
+.hero h1 {
+  font-size: clamp(28px, 5vw, 52px);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  margin-bottom: 10px;
+}
+.hero h1 span { color: var(--accent); }
+.hero p {
+  font-size: 15px;
+  color: var(--muted);
+  max-width: 520px;
+  margin: 0 auto 30px;
+  line-height: 1.6;
+  font-weight: 400;
+}
+.demo-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--warn);
+  background: rgba(245,158,11,0.08);
+  border: 1px solid rgba(245,158,11,0.25);
+  border-radius: 6px;
+  padding: 6px 14px;
+}
+.demo-note::before { content: '⚡'; }
+
+/* ── LAYOUT ── */
+.app-shell {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 24px 24px 60px;
+}
+
+/* ── DEVICE HEADER ── */
+.device-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 18px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 16px;
+  position: relative;
+  overflow: hidden;
+}
+.device-header::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(124,106,247,0.04) 0%, transparent 40%);
+  pointer-events: none;
+}
+.raven-glyph {
+  font-size: 26px;
+  filter: drop-shadow(0 0 8px rgba(124,106,247,0.5));
+}
+.device-name {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.device-meta {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--muted);
+  margin-top: 1px;
+}
+.conn-group {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.status-dot {
+  width: 9px; height: 9px;
+  border-radius: 50%;
+  background: var(--success);
+  box-shadow: 0 0 8px var(--success);
+  animation: breathe 2s ease-in-out infinite;
+}
+@keyframes breathe { 0%,100%{opacity:1;box-shadow:0 0 8px var(--success)} 50%{opacity:0.6;box-shadow:0 0 3px var(--success)} }
+.status-text { font-family: var(--mono); font-size: 10px; color: var(--success); }
+.active-pill {
+  display: none;
+  padding: 3px 10px;
+  border-radius: 20px;
+  background: rgba(124,106,247,0.12);
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 700;
+  animation: pulse-pill 1.2s ease-in-out infinite;
+}
+.active-pill.show { display: block; }
+@keyframes pulse-pill { 0%,100%{opacity:1} 50%{opacity:0.5} }
+
+/* ── TABS ── */
+.tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.tab {
+  padding: 8px 20px;
+  border-radius: 7px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--muted);
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  letter-spacing: 0.02em;
+}
+.tab:hover { color: var(--text); border-color: rgba(124,106,247,0.4); }
+.tab.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  box-shadow: 0 0 20px rgba(124,106,247,0.25);
+}
+
+.tab-panel { display: none; }
+.tab-panel.active { display: block; animation: fadeIn 0.2s ease; }
+@keyframes fadeIn { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:translateY(0)} }
+
+/* ── GRID & CARDS ── */
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+.grid-2 { grid-column: span 2; }
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  transition: border-color 0.2s;
+}
+.card:hover { border-color: rgba(124,106,247,0.2); }
+.card-title {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.card-title .chip {
+  margin-left: auto;
+  font-size: 9px;
+  color: var(--muted);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+/* ── BUTTONS ── */
+.btn-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; }
+.btn-grid.c2 { grid-template-columns: 1fr 1fr; }
+.btn-grid.c3 { grid-template-columns: 1fr 1fr 1fr; }
+
+button {
+  padding: 10px 12px;
+  border-radius: 7px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+button:hover { background: var(--border); border-color: rgba(124,106,247,0.5); }
+button:active { transform: scale(0.96); }
+button.accent {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  box-shadow: 0 0 16px rgba(124,106,247,0.2);
+}
+button.accent:hover { filter: brightness(1.15); box-shadow: 0 0 24px rgba(124,106,247,0.35); }
+button.danger { background: rgba(224,92,92,0.08); border-color: rgba(224,92,92,0.4); color: var(--danger); }
+button.danger:hover { background: rgba(224,92,92,0.15); }
+button.warn { background: rgba(245,158,11,0.08); border-color: rgba(245,158,11,0.4); color: var(--warn); }
+button.seq {
+  background: rgba(124,106,247,0.08);
+  border-color: rgba(124,106,247,0.35);
+  color: var(--accent);
+  font-weight: 700;
+  padding: 12px;
+}
+button.seq:hover { background: rgba(124,106,247,0.15); }
+button.seq.live {
+  background: var(--accent);
+  color: #fff;
+  animation: pulse-pill 1s infinite;
+  box-shadow: 0 0 20px rgba(124,106,247,0.4);
+}
+button.flash {
+  animation: btn-flash 0.4s ease;
+}
+@keyframes btn-flash {
+  0% { filter: brightness(1); }
+  50% { filter: brightness(2); box-shadow: 0 0 30px rgba(124,106,247,0.8); }
+  100% { filter: brightness(1); }
+}
+
+/* ── D-PAD ── */
+.dpad {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 6px;
+  width: 170px;
+  margin: 0 auto;
+}
+.dpad button { padding: 12px 0; font-size: 16px; }
+.dpad .centre { font-size: 11px; color: var(--muted); }
+
+/* ── RAVEN VIZ ── */
+.raven-viz {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+.raven-stage {
+  width: 140px;
+  height: 140px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.raven-body {
+  font-size: 72px;
+  transition: transform 0.4s cubic-bezier(0.34,1.56,0.64,1), filter 0.3s;
+  display: block;
+  transform-origin: center bottom;
+  filter: drop-shadow(0 0 12px rgba(124,106,247,0.3));
+  user-select: none;
+}
+.raven-beak-state {
+  position: absolute;
+  top: 28px; right: 20px;
+  font-size: 18px;
+  transition: all 0.3s;
+}
+.wings-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.wing-l, .wing-r {
+  font-size: 28px;
+  transition: transform 0.4s cubic-bezier(0.34,1.56,0.64,1), opacity 0.3s;
+  opacity: 0.4;
+}
+.wing-l { transform: rotate(20deg) translateX(-10px); transform-origin: right center; }
+.wing-r { transform: rotate(-20deg) translateX(10px) scaleX(-1); transform-origin: left center; }
+.wing-l.spread { transform: rotate(-30deg) translateX(-30px); opacity: 1; }
+.wing-r.spread { transform: rotate(30deg) translateX(30px) scaleX(-1); opacity: 1; }
+
+.servo-bars { width: 100%; }
+.servo-bar-row {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 6px;
+}
+.servo-bar-label { font-family: var(--mono); font-size: 9px; color: var(--muted); width: 56px; flex-shrink:0; }
+.servo-bar-track {
+  flex: 1; height: 4px; background: var(--border); border-radius: 2px; overflow: visible; position: relative;
+}
+.servo-bar-fill {
+  height: 100%; border-radius: 2px;
+  background: linear-gradient(90deg, var(--accent2), var(--accent));
+  transition: width 0.35s cubic-bezier(0.25,0.46,0.45,0.94);
+  position: relative;
+}
+.servo-bar-fill::after {
+  content: '';
+  position: absolute;
+  right: -3px; top: -3px;
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 6px var(--accent);
+}
+.servo-bar-val { font-family: var(--mono); font-size: 9px; color: var(--muted); width: 36px; text-align: right; }
+
+/* ── SLIDERS ── */
+.slider-row {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 10px;
+}
+.slider-row label { font-size: 12px; color: var(--muted); width: 100px; flex-shrink: 0; }
+.slider-row input[type=range] {
+  flex: 1;
+  accent-color: var(--accent2);
+  height: 4px;
+  cursor: pointer;
+}
+.slider-row .val {
+  font-family: var(--mono); font-size: 11px; color: var(--text); width: 44px; text-align: right;
+}
+.slider-row input[type=text], .slider-row input[type=password], .slider-row input[type=number] {
+  flex: 1;
+  background: var(--surface); color: var(--text);
+  border: 1px solid var(--border); border-radius: 6px;
+  padding: 7px 10px; font-family: var(--sans); font-size: 13px;
+  transition: border-color 0.15s;
+}
+.slider-row input:focus { outline: none; border-color: var(--accent); }
+
+/* ── SOUND LIST ── */
+.sound-list { display: flex; flex-direction: column; gap: 6px; }
+.sound-row {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 7px; padding: 9px 12px;
+  transition: border-color 0.15s, background 0.15s;
+}
+.sound-row:hover { border-color: rgba(124,106,247,0.4); }
+.sound-row.playing {
+  border-color: var(--success);
+  background: rgba(74,222,128,0.05);
+}
+.sound-name { font-size: 13px; font-weight: 600; flex: 1; }
+.sound-tag {
+  font-family: var(--mono); font-size: 9px; color: var(--accent2);
+  background: rgba(79,168,224,0.1); border: 1px solid rgba(79,168,224,0.2);
+  border-radius: 4px; padding: 2px 6px;
+}
+.sound-play-btn {
+  background: none; border: none; color: var(--success); font-size: 16px; padding: 2px 6px; cursor: pointer;
+}
+.sound-play-btn:hover { transform: scale(1.2); background: none; border: none; }
+.sound-play-btn:active { transform: scale(0.9); }
+.wav-bar {
+  height: 20px; display: flex; align-items: center; gap: 2px; opacity: 0;
+  transition: opacity 0.2s;
+}
+.wav-bar.active { opacity: 1; }
+.wav-bar span {
+  display: block; width: 3px; background: var(--success);
+  border-radius: 2px; animation: none;
+}
+.wav-bar.active span { animation: waveform 0.5s ease-in-out infinite alternate; }
+.wav-bar span:nth-child(1) { height: 6px; animation-delay: 0s; }
+.wav-bar span:nth-child(2) { height: 14px; animation-delay: 0.1s; }
+.wav-bar span:nth-child(3) { height: 10px; animation-delay: 0.2s; }
+.wav-bar span:nth-child(4) { height: 18px; animation-delay: 0.05s; }
+.wav-bar span:nth-child(5) { height: 8px; animation-delay: 0.15s; }
+@keyframes waveform { from{transform:scaleY(0.4)} to{transform:scaleY(1)} }
+
+/* ── DROP ZONE ── */
+.drop-zone {
+  border: 2px dashed var(--border); border-radius: 8px;
+  padding: 24px; text-align: center;
+  color: var(--muted); font-size: 13px; margin-top: 14px; cursor: pointer;
+  transition: all 0.2s;
+}
+.drop-zone:hover { border-color: var(--accent); color: var(--accent); background: rgba(124,106,247,0.04); }
+
+/* ── CAL GRID ── */
+.cal-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+.cal-row {
+  display: flex; flex-direction: column; gap: 6px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px;
+}
+.cal-row label { font-family: var(--mono); font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+.cal-controls { display: flex; align-items: center; gap: 6px; }
+.cal-controls input[type=range] { flex: 1; accent-color: var(--accent); }
+.cal-val { font-family: var(--mono); font-size: 11px; color: var(--text); width: 38px; text-align: right; }
+.cal-test { padding: 4px 8px; font-size: 11px; border-radius: 5px; }
+
+/* ── TIMELINE / SEQUENCES ── */
+.timeline {
+  min-height: 60px; padding: 10px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 8px; margin: 10px 0;
+  display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
+}
+.kf-chip {
+  background: var(--card); border: 1px solid var(--accent);
+  border-radius: 6px; padding: 6px 10px;
+  font-family: var(--mono); font-size: 10px; color: var(--accent);
+  display: flex; align-items: center; gap: 6px;
+}
+.kf-chip .kf-t { color: var(--muted); }
+.timeline-empty { color: var(--muted); font-size: 12px; font-style: italic; }
+.kf-toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+.kf-toolbar input[type=text] {
+  flex: 1; min-width: 120px;
+  background: var(--surface); color: var(--text);
+  border: 1px solid var(--border); border-radius: 6px;
+  padding: 7px 10px; font-family: var(--sans); font-size: 13px;
+}
+.kf-toolbar input:focus { outline: none; border-color: var(--accent); }
+.seq-saved-list { display: flex; flex-direction: column; gap: 6px; }
+.seq-saved-row {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 7px; padding: 9px 12px;
+  transition: border-color 0.15s;
+}
+.seq-saved-row:hover { border-color: rgba(124,106,247,0.4); }
+.seq-saved-name { font-size: 13px; font-weight: 600; flex: 1; }
+.seq-saved-meta { font-family: var(--mono); font-size: 10px; color: var(--muted); }
+
+/* ── SETTINGS ── */
+.cfg-preview {
+  background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+  padding: 8px 12px; font-family: var(--mono); font-size: 12px;
+  color: var(--success); margin: 4px 0 14px;
+  letter-spacing: 0.05em;
+}
+.cfg-section { font-family: var(--mono); font-size: 10px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted);
+  margin: 16px 0 10px; padding-top: 14px; border-top: 1px solid var(--border); }
+.cfg-section:first-child { margin-top: 0; padding-top: 0; border-top: none; }
+.cfg-msg {
+  margin-top: 10px; padding: 8px 14px; border-radius: 6px; font-size: 13px;
+  display: none;
+}
+.cfg-msg.ok { background: rgba(74,222,128,0.1); border: 1px solid rgba(74,222,128,0.3); color: var(--success); }
+.cfg-msg.warn { background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.3); color: var(--warn); }
+
+/* ── LOG ── */
+.log {
+  margin-top: 16px; padding: 10px 14px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); font-family: var(--mono);
+  font-size: 11px; max-height: 100px; overflow-y: auto;
+}
+.log-line { padding: 1px 0; }
+.log-line.ok { color: var(--success); }
+.log-line.err { color: var(--danger); }
+.log-line.info { color: var(--muted); }
+.log-line.send { color: var(--accent2); }
+
+/* ── MQTT SECTION ── */
+.mqtt-section {
+  margin-top: 28px;
+  padding: 28px 32px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+.mqtt-title {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.mqtt-title::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+.mqtt-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+.mqtt-card {
+  background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px;
+}
+.mqtt-card h4 { font-family: var(--mono); font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 10px; }
+.topic-pill {
+  font-family: var(--mono); font-size: 11px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 5px; padding: 5px 9px; margin-bottom: 5px;
+  color: var(--accent2); display: block;
+  cursor: pointer; transition: border-color 0.15s;
+}
+.topic-pill:hover { border-color: var(--accent); color: var(--accent); }
+.topic-desc { font-size: 11px; color: var(--muted); margin-bottom: 10px; }
+.wildcard { color: var(--warn); }
+
+/* ── FEATURE STRIP ── */
+.feature-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+  margin-top: 28px;
+}
+.feature-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+  transition: border-color 0.2s, transform 0.2s;
+}
+.feature-card:hover { border-color: rgba(124,106,247,0.35); transform: translateY(-2px); }
+.feature-icon { font-size: 22px; margin-bottom: 8px; }
+.feature-name { font-size: 13px; font-weight: 700; margin-bottom: 4px; }
+.feature-desc { font-size: 11px; color: var(--muted); line-height: 1.5; }
+
+/* ── TOAST ── */
+.toast {
+  position: fixed; bottom: 24px; right: 24px; z-index: 100;
+  background: var(--card); border: 1px solid var(--accent);
+  border-radius: 8px; padding: 10px 16px;
+  font-family: var(--mono); font-size: 11px; color: var(--accent);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  transform: translateY(80px); opacity: 0;
+  transition: all 0.3s cubic-bezier(0.34,1.56,0.64,1);
+  pointer-events: none;
+}
+.toast.show { transform: translateY(0); opacity: 1; }
+
+/* ── FOOTER ── */
+.footer {
+  text-align: center;
+  padding: 32px 24px;
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.8;
+}
+.footer a { color: var(--accent2); text-decoration: none; }
+.footer a:hover { color: var(--accent); }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-badge">Interactive Demo · v4.1 Firmware</div>
+  <h1>🐦‍⬛ Raven Animatronic<br><span>Controller</span></h1>
+  <p>ESP32-based WiFi controller for the Mr. Chicken's Prop Shop Animatronic Raven Kit. Full web UI with MQTT integration for multi-prop show environments.</p>
+  <div class="demo-note">Simulated interface — all controls are functional demos</div>
+</div>
+
+<div class="app-shell">
+
+  <!-- DEVICE HEADER -->
+  <div class="device-header">
+    <div class="raven-glyph">🐦‍⬛</div>
+    <div>
+      <div class="device-name">Raven 1</div>
+      <div class="device-meta">raven1.local &nbsp;·&nbsp; props/study/raven1 &nbsp;·&nbsp; v4.1.0</div>
+    </div>
+    <div class="conn-group">
+      <div id="active-pill" class="active-pill">● caw</div>
+      <div class="status-dot"></div>
+      <div class="status-text">Connected</div>
+    </div>
+  </div>
+
+  <!-- TABS -->
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('control',this)">⚡ Control</button>
+    <button class="tab" onclick="switchTab('sounds',this)">🔊 Sounds</button>
+    <button class="tab" onclick="switchTab('calibrate',this)">🎛 Calibrate</button>
+    <button class="tab" onclick="switchTab('sequences',this)">🎬 Sequences</button>
+    <button class="tab" onclick="switchTab('settings',this)">⚙ Settings</button>
+  </div>
+
+  <!-- ══ CONTROL TAB ══ -->
+  <div id="tab-control" class="tab-panel active">
+    <div class="grid">
+
+      <!-- Sequences -->
+      <div class="card">
+        <div class="card-title">Built-in Sequences</div>
+        <div class="btn-grid c2">
+          <button class="seq" id="btn-caw" onclick="runSequence('caw',this)">🔊 Caw</button>
+          <button class="seq" id="btn-alert" onclick="runSequence('alert',this)">👀 Alert</button>
+          <button class="seq" id="btn-wingflap" onclick="runSequence('wingflap',this)">🪶 Wing Flap</button>
+          <button class="seq" id="btn-idle" onclick="runSequence('idle',this)">💤 Idle</button>
+          <button class="seq" id="btn-sleep" onclick="runSequence('sleep',this)">😴 Sleep</button>
+          <button class="accent" onclick="runNeutral()">⬜ Neutral</button>
+        </div>
+      </div>
+
+      <!-- Raven Visualizer -->
+      <div class="raven-viz">
+        <div class="card-title" style="margin-bottom:4px">Live Position</div>
+        <div class="raven-stage">
+          <div class="wings-overlay">
+            <span class="wing-l" id="wing-l">🪶</span>
+            <span class="wing-r" id="wing-r">🪶</span>
+          </div>
+          <span class="raven-body" id="raven-body">🐦‍⬛</span>
+        </div>
+        <div class="servo-bars" id="servo-bars"></div>
+      </div>
+
+      <!-- Head -->
+      <div class="card">
+        <div class="card-title">Head</div>
+        <div class="dpad">
+          <div></div>
+          <button onclick="headMove('up')">▲</button>
+          <div></div>
+          <button onclick="headMove('left')">◀</button>
+          <button class="centre" onclick="headMove('centre')">·</button>
+          <button onclick="headMove('right')">▶</button>
+          <div></div>
+          <button onclick="headMove('down')">▼</button>
+          <div></div>
+        </div>
+      </div>
+
+      <!-- Beak & Wings -->
+      <div class="card">
+        <div class="card-title">Beak &amp; Wings</div>
+        <div class="btn-grid c2" style="margin-bottom:10px">
+          <button onclick="beakOpen()">😮 Open</button>
+          <button onclick="beakClose()">😶 Close</button>
+        </div>
+        <div class="btn-grid c2">
+          <button onclick="wingsSpread()">🪶 Spread</button>
+          <button onclick="wingsFold()">🪶 Fold</button>
+        </div>
+      </div>
+
+      <!-- Body Bob -->
+      <div class="card">
+        <div class="card-title">Body Bob</div>
+        <div class="btn-grid c2">
+          <button class="accent" id="btn-bob" onclick="bobToggle()">▶ Start</button>
+          <button class="danger" onclick="bobStop()">■ Stop</button>
+        </div>
+      </div>
+
+      <!-- Raw Servo -->
+      <div class="card">
+        <div class="card-title">Raw Servo <span class="chip">SSC-32U direct</span></div>
+        <div class="slider-row">
+          <label>Channel</label>
+          <input type="range" id="s_ch" min="0" max="5" value="0" oninput="updateRaw()">
+          <span class="val" id="v_ch">0</span>
+        </div>
+        <div class="slider-row">
+          <label>Position (µs)</label>
+          <input type="range" id="s_pos" min="500" max="2500" value="1500" step="10" oninput="updateRaw()">
+          <span class="val" id="v_pos">1500</span>
+        </div>
+        <div class="slider-row">
+          <label>Time (ms)</label>
+          <input type="range" id="s_t" min="50" max="2000" value="300" step="50" oninput="updateRaw()">
+          <span class="val" id="v_t">300</span>
+        </div>
+        <button class="accent" onclick="sendRaw()" style="width:100%;margin-top:4px">Send #<span id="raw-preview">0 → 1500µs / 300ms</span></button>
+      </div>
+
+      <!-- Custom Sequences -->
+      <div class="card">
+        <div class="card-title">Custom Sequences</div>
+        <div id="custom-seq-list">
+          <span style="color:var(--muted);font-size:12px">No custom sequences yet — create one in the Sequences tab</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Log -->
+    <div class="log" id="log">
+      <div class="log-line ok">✓ Connected to raven1.local</div>
+      <div class="log-line info">→ MQTT: props/study/raven1</div>
+      <div class="log-line info">Firmware v4.1.0 · ESP32 WROOM · IP 192.168.1.42</div>
+    </div>
+  </div>
+
+  <!-- ══ SOUNDS TAB ══ -->
+  <div id="tab-sounds" class="tab-panel">
+    <div class="card">
+      <div class="card-title">Soundboard <span class="chip" id="spiffs-info">SPIFFS: 1.2MB / 3MB used</span></div>
+      <div class="sound-list" id="sound-list"></div>
+      <div class="drop-zone" onclick="demoUpload()">
+        ＋ Drop WAV files here or click to upload
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ CALIBRATE TAB ══ -->
+  <div id="tab-calibrate" class="tab-panel">
+    <div class="card">
+      <div class="card-title">Servo Calibration <span class="chip">Adjust each position, then Save All</span></div>
+      <div class="cal-grid" id="cal-grid"></div>
+      <div style="display:flex;gap:8px;margin-top:14px">
+        <button class="accent" onclick="calSave()" style="flex:1">💾 Save All Positions</button>
+        <button class="warn" onclick="calNeutral()" style="flex:1">⬜ Move to Neutral</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SEQUENCES TAB ══ -->
+  <div id="tab-sequences" class="tab-panel">
+    <div class="grid">
+      <div class="card grid-2">
+        <div class="card-title">Keyframe Editor</div>
+        <div class="kf-toolbar">
+          <input type="text" id="kf-name" placeholder="Sequence name (e.g. greeting)" maxlength="32">
+          <button class="accent" onclick="kfAddFrame()">＋ Add Keyframe</button>
+          <button class="accent" onclick="kfSave()">💾 Save</button>
+          <button class="danger" onclick="kfClear()">✕ Clear</button>
+        </div>
+        <div class="timeline" id="kf-timeline">
+          <span class="timeline-empty">Pose the raven using the Control tab, then click Add Keyframe to record each position</span>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:6px;font-family:var(--mono)">
+          Channels: [Beak, Head Pan, Head Tilt, Wings, Body Bob]
+        </div>
+      </div>
+
+      <div class="card grid-2">
+        <div class="card-title">Saved Sequences</div>
+        <div class="seq-saved-list" id="seq-saved-list">
+          <span style="color:var(--muted);font-size:12px">No sequences saved yet</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SETTINGS TAB ══ -->
+  <div id="tab-settings" class="tab-panel">
+    <div class="grid">
+      <div class="card grid-2">
+
+        <div class="cfg-section">Device Identity</div>
+        <div class="slider-row">
+          <label>Device Name</label>
+          <input type="text" id="cfg-name" value="Raven 1">
+        </div>
+        <div class="slider-row">
+          <label>Hostname</label>
+          <input type="text" id="cfg-host" value="raven1">
+          <span class="val" style="width:auto;color:var(--muted);font-size:11px">.local</span>
+        </div>
+
+        <div class="cfg-section">MQTT Topic Hierarchy</div>
+        <div class="slider-row">
+          <label>Location</label>
+          <input type="text" id="cfg-loc" value="props" oninput="updatePreview()">
+        </div>
+        <div class="slider-row">
+          <label>Room</label>
+          <input type="text" id="cfg-room" value="study" oninput="updatePreview()">
+        </div>
+        <div class="slider-row">
+          <label>Device ID</label>
+          <input type="text" id="cfg-dev" value="raven1" oninput="updatePreview()">
+        </div>
+        <div class="cfg-preview" id="cfg-preview">props/study/raven1/[command]</div>
+
+        <div class="cfg-section">MQTT Broker</div>
+        <div class="slider-row">
+          <label>Broker address</label>
+          <input type="text" id="cfg-broker" value="homeassistant.local">
+        </div>
+        <div class="slider-row">
+          <label>Port</label>
+          <input type="number" id="cfg-port" value="1883" style="max-width:120px">
+        </div>
+
+        <div class="cfg-section">WiFi</div>
+        <div class="slider-row">
+          <label>SSID</label>
+          <input type="text" id="cfg-ssid" value="MyNetwork">
+        </div>
+        <div class="slider-row">
+          <label>Password</label>
+          <input type="password" id="cfg-pass" placeholder="••••••••">
+        </div>
+
+        <div style="display:flex;gap:8px;margin-top:14px">
+          <button class="accent" onclick="cfgSave()" style="flex:1">💾 Save Settings</button>
+          <button class="warn" onclick="cfgReset()" style="flex:1">⚙ Reset to Setup AP</button>
+        </div>
+        <div class="cfg-msg" id="cfg-msg"></div>
+        <div style="margin-top:14px;font-family:var(--mono);font-size:10px;color:var(--muted);text-align:right">
+          Firmware v4.1.0 · Build 2025-10-01 · Heap 182KB free
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ MQTT SECTION ══ -->
+  <div class="mqtt-section">
+    <div class="mqtt-title">MQTT Integration</div>
+    <div class="mqtt-grid">
+
+      <div class="mqtt-card">
+        <h4>Single Bird</h4>
+        <span class="topic-pill" onclick="topicDemo(this,'sequence','caw')">props/study/raven1/<b>sequence</b></span>
+        <span class="topic-pill" onclick="topicDemo(this,'command','beak_open')">props/study/raven1/<b>command</b></span>
+        <span class="topic-pill" onclick="topicDemo(this,'audio','caw')">props/study/raven1/<b>audio</b></span>
+        <p class="topic-desc">Target one specific bird directly</p>
+      </div>
+
+      <div class="mqtt-card">
+        <h4>Whole Room Wildcard</h4>
+        <span class="topic-pill" onclick="wildcardDemo()">props/tiki_bar/<span class="wildcard">+</span>/sequence</span>
+        <span class="topic-pill" onclick="wildcardDemo()">props/study/<span class="wildcard">+</span>/command</span>
+        <p class="topic-desc">One message fires every bird in the room simultaneously</p>
+      </div>
+
+      <div class="mqtt-card">
+        <h4>Whole Show</h4>
+        <span class="topic-pill" onclick="wildcardDemo()">props/<span class="wildcard">+</span>/<span class="wildcard">+</span>/sequence</span>
+        <span class="topic-pill" onclick="wildcardDemo()">props/<span class="wildcard">+</span>/<span class="wildcard">+</span>/query</span>
+        <p class="topic-desc">Broadcast to every prop in every room at once</p>
+      </div>
+
+      <div class="mqtt-card">
+        <h4>Bird Publishes</h4>
+        <span class="topic-pill">{prefix}/<b>status</b> → online/offline</span>
+        <span class="topic-pill">{prefix}/<b>identity</b> → JSON</span>
+        <span class="topic-pill">{prefix}/<b>sounds/list</b> → JSON</span>
+        <p class="topic-desc">Automatic announcements on connect and query</p>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══ FEATURE STRIP ══ -->
+  <div class="feature-strip">
+    <div class="feature-card">
+      <div class="feature-icon">📡</div>
+      <div class="feature-name">Captive Portal</div>
+      <div class="feature-desc">First-boot WiFi setup via BirdSetup AP. No hardcoded credentials.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🔄</div>
+      <div class="feature-name">OTA Updates</div>
+      <div class="feature-desc">Flash new firmware over WiFi. No USB cable needed mid-show.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🐕</div>
+      <div class="feature-name">Watchdog</div>
+      <div class="feature-desc">30-second hardware watchdog. Auto-reboots if firmware hangs.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">💀</div>
+      <div class="feature-name">Last Will</div>
+      <div class="feature-desc">MQTT broker flags the bird offline instantly if it drops.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🔁</div>
+      <div class="feature-name">Auto-Reconnect</div>
+      <div class="feature-desc">WiFi drops mid-show? Exponential backoff reconnect, automatic.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🎬</div>
+      <div class="feature-name">Keyframe Editor</div>
+      <div class="feature-desc">Pose → record → save. Custom sequences playable via MQTT.</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- FOOTER -->
+<div class="footer">
+  <strong>Animatronic Bird Controller v4.1</strong> · MIT License<br>
+  Firmware by <a href="https://github.com/BryanHaven/raven-animatronic">BryanHaven</a> · 
+  Raven kit by <a href="https://chickenprops.com/products/animatronic-raven-kit">Mr. Chicken's Prop Shop</a> · 
+  Developed with Claude (Anthropic)
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ── State ─────────────────────────────────────────────────────────────────────
+const state = {
+  beakOpen: false,
+  wingsSpread: false,
+  bobbing: false,
+  headPan: 1500,   // µs
+  headTilt: 1500,
+  bodyBob: 1500,
+  beak: 1000,
+  wings: 1000,
+  activeSeq: null,
+  seqTimer: null,
+  bobTimer: null,
+  kfFrames: [],
+  savedSeqs: [],
+};
+
+// ── Servo bars ────────────────────────────────────────────────────────────────
+const CH = ['Beak','Pan','Tilt','Wings','Bob'];
+const CH_VALS = () => [state.beak, state.headPan, state.headTilt, state.wings, state.bodyBob];
+
+function buildServoBars() {
+  const el = document.getElementById('servo-bars');
+  el.innerHTML = CH.map((name,i) => `
+    <div class="servo-bar-row">
+      <span class="servo-bar-label">${name}</span>
+      <div class="servo-bar-track">
+        <div class="servo-bar-fill" id="sbar-${i}" style="width:50%"></div>
+      </div>
+      <span class="servo-bar-val" id="sval-${i}">1500</span>
+    </div>`).join('');
+}
+
+function updateServoBars() {
+  const vals = CH_VALS();
+  vals.forEach((v,i) => {
+    const pct = ((v - 500) / 2000) * 100;
+    const bar = document.getElementById(`sbar-${i}`);
+    const val = document.getElementById(`sval-${i}`);
+    if (bar) bar.style.width = pct + '%';
+    if (val) val.textContent = v;
+  });
+}
+
+// ── Log ───────────────────────────────────────────────────────────────────────
+function log(msg, type='send') {
+  const el = document.getElementById('log');
+  if (!el) return;
+  const line = document.createElement('div');
+  line.className = `log-line ${type}`;
+  const prefix = {send:'→',ok:'✓',err:'✗',info:'·'}[type]||'·';
+  line.textContent = `${prefix} ${msg}`;
+  el.appendChild(line);
+  el.scrollTop = el.scrollHeight;
+  // keep last 20 lines
+  while (el.children.length > 20) el.removeChild(el.firstChild);
+}
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+// ── Active pill ───────────────────────────────────────────────────────────────
+function setActivePill(name) {
+  const pill = document.getElementById('active-pill');
+  document.querySelectorAll('.seq').forEach(b => b.classList.remove('live'));
+  if (!name) { pill.classList.remove('show'); state.activeSeq = null; return; }
+  pill.classList.add('show');
+  pill.textContent = '● ' + name;
+  state.activeSeq = name;
+  const map = {caw:'btn-caw',alert:'btn-alert',wingflap:'btn-wingflap',idle:'btn-idle',sleep:'btn-sleep'};
+  if (map[name]) document.getElementById(map[name])?.classList.add('live');
+}
+
+// ── Tab switching ─────────────────────────────────────────────────────────────
+function switchTab(id, btn) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + id)?.classList.add('active');
+  btn.classList.add('active');
+}
+
+// ── Raven visualization ───────────────────────────────────────────────────────
+function updateRavenViz() {
+  const body = document.getElementById('raven-body');
+  const wl = document.getElementById('wing-l');
+  const wr = document.getElementById('wing-r');
+
+  // Head tilt / pan
+  const panDeg = ((state.headPan - 1500) / 500) * 20;
+  const tiltDeg = ((state.headTilt - 1500) / 500) * -10;
+  const bobScale = state.bobbing ? 1 + Math.sin(Date.now()/200)*0.04 : 1;
+  body.style.transform = `rotate(${panDeg}deg) translateY(${tiltDeg}px) scale(${bobScale})`;
+
+  // Wings
+  if (state.wingsSpread) {
+    wl.classList.add('spread'); wr.classList.add('spread');
+  } else {
+    wl.classList.remove('spread'); wr.classList.remove('spread');
+  }
+
+  updateServoBars();
+}
+
+// ── Sequences ─────────────────────────────────────────────────────────────────
+const SEQ_DEFS = {
+  caw: [
+    {dur:0,   fn:()=>{ state.beakOpen=true; state.beak=1900; state.headTilt=1300; }},
+    {dur:300, fn:()=>{ state.beakOpen=false; state.beak=1000; }},
+    {dur:600, fn:()=>{ state.headTilt=1700; state.beakOpen=true; state.beak=1800; }},
+    {dur:900, fn:()=>{ state.beakOpen=false; state.beak=1000; state.headTilt=1500; }},
+    {dur:1200,fn:()=>{ setActivePill(null); }},
+  ],
+  alert: [
+    {dur:0,   fn:()=>{ state.headPan=1200; state.headTilt=1300; }},
+    {dur:400, fn:()=>{ state.headPan=1800; }},
+    {dur:800, fn:()=>{ state.headPan=1500; state.headTilt=1500; }},
+    {dur:1200,fn:()=>{ setActivePill(null); }},
+  ],
+  wingflap: [
+    {dur:0,   fn:()=>{ state.wingsSpread=true; state.wings=2000; }},
+    {dur:300, fn:()=>{ state.wingsSpread=false; state.wings=1000; }},
+    {dur:600, fn:()=>{ state.wingsSpread=true; state.wings=2000; }},
+    {dur:900, fn:()=>{ state.wingsSpread=false; state.wings=1000; }},
+    {dur:1100,fn:()=>{ setActivePill(null); }},
+  ],
+  idle: [
+    {dur:0,   fn:()=>{ state.headPan=1400; }},
+    {dur:600, fn:()=>{ state.headTilt=1350; }},
+    {dur:1200,fn:()=>{ state.headPan=1600; }},
+    {dur:1800,fn:()=>{ state.headTilt=1500; state.headPan=1500; }},
+    {dur:2200,fn:()=>{ setActivePill(null); }},
+  ],
+  sleep: [
+    {dur:0,   fn:()=>{ state.headTilt=1700; state.beak=1100; }},
+    {dur:800, fn:()=>{ state.headTilt=1800; }},
+    {dur:1600,fn:()=>{ setActivePill(null); }},
+  ],
+};
+
+function runSequence(name, btn) {
+  clearTimeout(state.seqTimer);
+  setActivePill(name);
+  btn?.classList.add('flash');
+  setTimeout(()=>btn?.classList.remove('flash'), 400);
+  log(`sequence: ${name}`, 'send');
+  toast(`▶ ${name}`);
+
+  const frames = SEQ_DEFS[name];
+  if (!frames) return;
+  frames.forEach(f => {
+    state.seqTimer = setTimeout(() => { f.fn(); updateRavenViz(); }, f.dur);
+  });
+}
+
+function runNeutral() {
+  clearTimeout(state.seqTimer);
+  clearInterval(state.bobTimer); state.bobbing = false;
+  state.headPan=1500; state.headTilt=1500;
+  state.beak=1000; state.wings=1000; state.bodyBob=1500;
+  state.beakOpen=false; state.wingsSpread=false;
+  setActivePill(null);
+  updateRavenViz();
+  log('cmd: neutral', 'send');
+  toast('⬜ Neutral');
+}
+
+// ── Head / beak / wings ───────────────────────────────────────────────────────
+function headMove(dir) {
+  const step = 200;
+  if (dir==='left')   state.headPan   = Math.max(700,  state.headPan-step);
+  if (dir==='right')  state.headPan   = Math.min(2300, state.headPan+step);
+  if (dir==='up')     state.headTilt  = Math.max(800,  state.headTilt-step);
+  if (dir==='down')   state.headTilt  = Math.min(2200, state.headTilt+step);
+  if (dir==='centre') { state.headPan=1500; state.headTilt=1500; }
+  updateRavenViz();
+  log(`cmd: head_${dir}`, 'send');
+}
+
+function beakOpen()  { state.beakOpen=true;  state.beak=1900; updateRavenViz(); log('cmd: beak_open','send'); }
+function beakClose() { state.beakOpen=false; state.beak=1000; updateRavenViz(); log('cmd: beak_close','send'); }
+function wingsSpread() { state.wingsSpread=true;  state.wings=2000; updateRavenViz(); log('cmd: wings_out','send'); }
+function wingsFold()   { state.wingsSpread=false; state.wings=1000; updateRavenViz(); log('cmd: wings_in','send'); }
+
+// ── Body bob ──────────────────────────────────────────────────────────────────
+let bobPhase = 0;
+function bobToggle() {
+  if (state.bobbing) return bobStop();
+  state.bobbing = true;
+  document.getElementById('btn-bob').textContent = '⏸ Bobbing...';
+  state.bobTimer = setInterval(() => {
+    bobPhase += 0.15;
+    state.bodyBob = 1500 + Math.sin(bobPhase)*300;
+    updateRavenViz();
+  }, 50);
+  log('cmd: bob_start','send');
+  toast('🐦‍⬛ Bobbing');
+}
+function bobStop() {
+  clearInterval(state.bobTimer);
+  state.bobbing = false;
+  state.bodyBob = 1500;
+  document.getElementById('btn-bob').textContent = '▶ Start';
+  updateRavenViz();
+  log('cmd: bob_stop','send');
+}
+
+// ── Raw servo ─────────────────────────────────────────────────────────────────
+function updateRaw() {
+  const ch  = document.getElementById('s_ch').value;
+  const pos = document.getElementById('s_pos').value;
+  const t   = document.getElementById('s_t').value;
+  document.getElementById('v_ch').textContent  = ch;
+  document.getElementById('v_pos').textContent = pos;
+  document.getElementById('v_t').textContent   = t;
+  document.getElementById('raw-preview').textContent = `${ch} → ${pos}µs / ${t}ms`;
+}
+function sendRaw() {
+  const ch  = document.getElementById('s_ch').value;
+  const pos = document.getElementById('s_pos').value;
+  const t   = document.getElementById('s_t').value;
+  log(`servo: ${ch} ${pos} ${t}`, 'send');
+  toast(`CH${ch}: ${pos}µs`);
+  // update matching state
+  if (ch==0) state.beak=+pos;
+  if (ch==1) state.headPan=+pos;
+  if (ch==2) state.headTilt=+pos;
+  if (ch==3||ch==4) state.wings=+pos;
+  if (ch==5) state.bodyBob=+pos;
+  updateRavenViz();
+}
+
+// ── Sounds tab ────────────────────────────────────────────────────────────────
+const DEMO_SOUNDS = [
+  {name:'caw',      file:'caw.wav',      seq:'caw',      dur:1.2},
+  {name:'screech',  file:'screech.wav',  seq:'alert',    dur:0.9},
+  {name:'rattle',   file:'rattle.wav',   seq:'idle',     dur:2.1},
+  {name:'flap',     file:'flap.wav',     seq:'wingflap', dur:0.7},
+];
+
+let playingSound = null;
+let playTimer = null;
+
+function buildSounds() {
+  const el = document.getElementById('sound-list');
+  el.innerHTML = DEMO_SOUNDS.map((s,i) => `
+    <div class="sound-row" id="srow-${i}">
+      <button class="sound-play-btn" onclick="playSound(${i})">▶</button>
+      <span class="sound-name">${s.name}</span>
+      <div class="wav-bar" id="wav-${i}">
+        <span></span><span></span><span></span><span></span><span></span>
+      </div>
+      <span class="sound-tag">${s.seq}</span>
+      <span style="font-family:var(--mono);font-size:10px;color:var(--muted)">${s.file}</span>
+    </div>`).join('');
+}
+
+function playSound(i) {
+  if (playingSound !== null) stopSound(playingSound);
+  const s = DEMO_SOUNDS[i];
+  playingSound = i;
+  document.getElementById(`srow-${i}`).classList.add('playing');
+  document.getElementById(`wav-${i}`).classList.add('active');
+  log(`audio: ${s.name} + seq:${s.seq}`, 'send');
+  toast(`🔊 ${s.name}`);
+  // also run the sequence
+  const btn = document.getElementById(`btn-${s.seq}`);
+  runSequence(s.seq, btn);
+  playTimer = setTimeout(() => stopSound(i), s.dur * 1000);
+}
+
+function stopSound(i) {
+  document.getElementById(`srow-${i}`)?.classList.remove('playing');
+  document.getElementById(`wav-${i}`)?.classList.remove('active');
+  clearTimeout(playTimer);
+  playingSound = null;
+}
+
+function demoUpload() {
+  toast('📁 Upload: demo mode — no files transferred');
+  log('upload: (demo) caw2.wav', 'info');
+}
+
+// ── Calibrate tab ─────────────────────────────────────────────────────────────
+const CAL_DEFS = [
+  {key:'beak_closed', label:'Beak Closed', val:1000},
+  {key:'beak_open',   label:'Beak Open',   val:1900},
+  {key:'head_centre', label:'Head Centre', val:1500},
+  {key:'head_left',   label:'Head Left',   val:700 },
+  {key:'head_right',  label:'Head Right',  val:2300},
+  {key:'head_up',     label:'Head Up',     val:800 },
+  {key:'head_down',   label:'Head Down',   val:2200},
+  {key:'wing_fold',   label:'Wing Fold',   val:1000},
+  {key:'wing_full',   label:'Wing Spread', val:2000},
+  {key:'bob_mid',     label:'Bob Mid',     val:1500},
+  {key:'bob_up',      label:'Bob Up',      val:1200},
+  {key:'bob_down',    label:'Bob Down',    val:1800},
+];
+
+function buildCal() {
+  const el = document.getElementById('cal-grid');
+  el.innerHTML = CAL_DEFS.map((c,i) => `
+    <div class="cal-row">
+      <label>${c.label}</label>
+      <div class="cal-controls">
+        <input type="range" min="500" max="2500" value="${c.val}" step="10"
+          oninput="document.getElementById('cv-${i}').textContent=this.value">
+        <span class="cal-val" id="cv-${i}">${c.val}</span>
+        <button class="cal-test warn" onclick="calTest('${c.key}',${i})">Test</button>
+      </div>
+    </div>`).join('');
+}
+
+function calTest(key, i) {
+  const val = document.querySelector(`#cal-grid .cal-row:nth-child(${i+1}) input`).value;
+  log(`cal test: ${key} → ${val}µs`, 'send');
+  toast(`🎛 ${key}: ${val}µs`);
+}
+function calSave()    { log('positions: saved to SPIFFS','ok'); toast('💾 Calibration saved'); }
+function calNeutral() { log('cmd: neutral','send'); toast('⬜ Neutral'); runNeutral(); }
+
+// ── Keyframe sequences ────────────────────────────────────────────────────────
+let kfFrameCount = 0;
+
+function kfAddFrame() {
+  const vals = [state.beak, state.headPan, state.headTilt, state.wings, state.bodyBob];
+  const t = kfFrameCount * 800;
+  state.kfFrames.push({t, vals});
+  kfFrameCount++;
+  renderTimeline();
+  log(`kf: frame ${kfFrameCount} @ ${t}ms`, 'info');
+  toast(`＋ Frame ${kfFrameCount}`);
+}
+
+function renderTimeline() {
+  const el = document.getElementById('kf-timeline');
+  if (state.kfFrames.length === 0) {
+    el.innerHTML = '<span class="timeline-empty">Pose the raven using the Control tab, then click Add Keyframe to record each position</span>';
+    return;
+  }
+  el.innerHTML = state.kfFrames.map((f,i) => `
+    <div class="kf-chip">
+      <span class="kf-t">${f.t}ms</span>
+      [${f.vals.map(v=>v).join(', ')}]
+    </div>`).join('');
+}
+
+function kfSave() {
+  const name = document.getElementById('kf-name').value.trim();
+  if (!name) { toast('⚠ Enter a sequence name'); return; }
+  if (state.kfFrames.length < 2) { toast('⚠ Add at least 2 keyframes'); return; }
+  state.savedSeqs.push({name, frames: state.kfFrames.length, dur: state.kfFrames[state.kfFrames.length-1].t});
+  log(`kf saved: ${name} (${state.kfFrames.length} frames)`, 'ok');
+  toast(`💾 Saved: ${name}`);
+  kfClear();
+  renderSavedSeqs();
+  renderCustomSeqList();
+}
+
+function kfClear() {
+  state.kfFrames = []; kfFrameCount = 0;
+  document.getElementById('kf-name').value = '';
+  renderTimeline();
+}
+
+function renderSavedSeqs() {
+  const el = document.getElementById('seq-saved-list');
+  if (state.savedSeqs.length === 0) {
+    el.innerHTML = '<span style="color:var(--muted);font-size:12px">No sequences saved yet</span>';
+    return;
+  }
+  el.innerHTML = state.savedSeqs.map((s,i) => `
+    <div class="seq-saved-row">
+      <span class="seq-saved-name">${s.name}</span>
+      <span class="seq-saved-meta">${s.frames} frames · ${s.dur}ms</span>
+      <button class="seq" style="padding:6px 12px;font-size:11px" onclick="playCustom('${s.name}')">▶ Play</button>
+      <button class="danger" style="padding:6px 10px;font-size:11px" onclick="deleteSeq(${i})">✕</button>
+    </div>`).join('');
+}
+
+function renderCustomSeqList() {
+  const el = document.getElementById('custom-seq-list');
+  if (state.savedSeqs.length === 0) {
+    el.innerHTML = '<span style="color:var(--muted);font-size:12px">No custom sequences yet — create one in the Sequences tab</span>';
+    return;
+  }
+  el.innerHTML = `<div class="btn-grid c2">${state.savedSeqs.map(s=>`
+    <button class="seq" onclick="playCustom('${s.name}')">▶ ${s.name}</button>`).join('')}</div>`;
+}
+
+function playCustom(name) {
+  setActivePill(name);
+  log(`sequence: ${name}`, 'send');
+  toast(`▶ ${name}`);
+  setTimeout(()=>setActivePill(null), 2000);
+}
+
+function deleteSeq(i) {
+  state.savedSeqs.splice(i,1);
+  renderSavedSeqs(); renderCustomSeqList();
+  toast('🗑 Deleted');
+}
+
+// ── Settings ──────────────────────────────────────────────────────────────────
+function updatePreview() {
+  const loc  = document.getElementById('cfg-loc').value  || 'props';
+  const room = document.getElementById('cfg-room').value || 'room';
+  const dev  = document.getElementById('cfg-dev').value  || 'device';
+  document.getElementById('cfg-preview').textContent = `${loc}/${room}/${dev}/[command]`;
+}
+
+function cfgSave() {
+  const msg = document.getElementById('cfg-msg');
+  msg.className = 'cfg-msg ok'; msg.style.display='block';
+  msg.textContent = '✓ Settings saved — rebooting to reconnect...';
+  log('config: saved, reboot pending','ok');
+  toast('💾 Settings saved');
+  setTimeout(()=>{ msg.style.display='none'; }, 3000);
+}
+
+function cfgReset() {
+  const msg = document.getElementById('cfg-msg');
+  msg.className = 'cfg-msg warn'; msg.style.display='block';
+  msg.textContent = '⚙ Wiping config.json — rebooting as BirdSetup AP...';
+  log('reconfigure: wiping config, reboot as BirdSetup','warn');
+  toast('⚙ Reset to AP mode');
+  setTimeout(()=>{ msg.style.display='none'; }, 3000);
+}
+
+// ── MQTT topic demos ──────────────────────────────────────────────────────────
+function topicDemo(el, topic, payload) {
+  el.style.background = 'rgba(74,222,128,0.1)';
+  el.style.borderColor = 'var(--success)';
+  setTimeout(()=>{ el.style.background=''; el.style.borderColor=''; }, 600);
+  log(`MQTT → ${document.getElementById('cfg-preview')?.textContent?.split('/').slice(0,3).join('/')||'props/study/raven1'}/${topic}: ${payload}`, 'send');
+  toast(`📡 ${topic}: ${payload}`);
+  if (topic === 'sequence') { const btn=document.getElementById('btn-'+payload); runSequence(payload, btn); }
+}
+
+function wildcardDemo() {
+  toast('📡 Broadcast to all birds in room');
+  log('MQTT wildcard → props/tiki_bar/+/sequence: caw', 'send');
+  ['btn-caw'].forEach(id => { const btn=document.getElementById(id); runSequence('caw',btn); });
+}
+
+// ── Viz loop ──────────────────────────────────────────────────────────────────
+function vizLoop() {
+  if (state.bobbing) updateRavenViz();
+  requestAnimationFrame(vizLoop);
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+buildServoBars();
+buildSounds();
+buildCal();
+updateServoBars();
+updateRaw();
+vizLoop();
+</script>
+</body>
+</html>
