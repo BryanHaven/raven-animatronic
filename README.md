@@ -22,14 +22,48 @@ ESP32-based WiFi controller for animatronic props built around the [Mr. Chicken'
 
 ---
 
-## Planned Features (v5+)
+## Planned Features
+
+### v5.x — Kit-Agnostic Architecture
+
+The v5.x release will refactor the firmware around a `kit.json` personality file,
+making the controller deployable on any Mr. Chicken's Prop Shop kit without code
+changes. The raven and parrot (when released) will each ship with their own
+`kit.json` — new kits can be added by dropping in a new file.
+
+**`kit.json` defines everything kit-specific:**
+
+| Section | Contents |
+|---------|----------|
+| Identity | Kit name, version, glyph (🐦‍⬛ / 🦜), manufacturer |
+| UI | Accent colors, theme name, control panel layout hints |
+| Servos | Channel map — name, channel number, µs min/max, speed, acceleration, neutral |
+| Sequences | Built-in sequence definitions referencing channels by name, not number |
+| Sounds | Default sound library and sound-to-sequence bindings |
+| MQTT | Kit type published in identity announcement, Home Assistant discovery payload |
+
+**`config.json` stays network/identity only** — WiFi, MQTT broker, device name,
+hostname. Clean separation between "what kind of bird" and "which bird on the network."
+
+**Captive portal kit selection** — first-boot setup asks which kit you're building
+and copies the appropriate preset into place. Kit can be changed later from the
+Settings tab without reflashing.
+
+**UI renders from kit.json** — control panel buttons, D-pad, and sequence list are
+generated from the servo and sequence definitions. A parrot with a crest servo gets
+a crest button automatically. The raven keeps its dark purple theme; the parrot gets
+its own color scheme. The GitHub Pages demo will support kit switching live.
+
+---
+
+### v5.x — Additional Features
 
 | Feature | Notes |
 |---------|-------|
-| Random idle behavior | Background task — random head/beak movements between cues, configurable interval |
+| Random idle behavior | Background task — random head/beak movements between cues, configurable interval and intensity per kit |
 | Conductor mode | One MQTT message fans out a timed sequence to multiple birds in a room |
 | Startup sync | All birds in a room wait for a sync message before moving to neutral |
-| Export/import config | Download full config as zip, clone to new bird by uploading |
+| Export/import config | Download full config + kit as zip, clone to new bird by uploading |
 | OTA SPIFFS update | Currently OTA covers firmware only — add filesystem update support |
 | Physical trigger input | 3.5mm jack → GPIO 34, fires configurable sequence on contact closure |
 | Current sensing | INA219 on VS+ rail — detect stalled/disconnected servos |
@@ -38,9 +72,6 @@ ESP32-based WiFi controller for animatronic props built around the [Mr. Chicken'
 | Looping ambient audio | `/audio/loop` command for continuous background sound |
 | Cue numbers | Numeric `/cue` topic mapping integers to sequence names for QLab/Isadora |
 | Status LED | NeoPixel showing WiFi/MQTT/sequence state |
-| Dynamic servo mapping | Config-driven channel map in config.json — define channel number, name, µs range, and neutral per servo. Sequences and commands reference channels by name rather than hardcoded numbers. Kit presets (raven, parrot) selectable at captive portal setup. Makes firmware kit-agnostic for parrot and future builds. |
-
-
 
 ---
 
