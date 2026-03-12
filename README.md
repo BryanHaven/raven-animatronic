@@ -2,6 +2,9 @@
 
 ESP32-based WiFi controller for animatronic props built around the [Mr. Chicken's Prop Shop Animatronic Raven Kit](https://chickenprops.com/products/animatronic-raven-kit) and compatible builds. v4 adds a **captive portal for first-time WiFi/MQTT setup**, **full runtime device configuration** (no hardcoded credentials), and a **three-level MQTT topic hierarchy** designed for multi-prop show environments. v4.1 hardens the firmware for show reliability with OTA updates, a hardware watchdog, MQTT last will, and WiFi auto-reconnect.
 
+## Interactive Demo
+👉 [Try the live demo](https://bryanhaven.github.io/raven-animatronic/)
+
 > **Upgrading from v3?** The only breaking change is that WiFi and MQTT credentials are no longer in `raven_config.h`. On first boot v4 will launch the setup AP — configure once, then it behaves exactly like v3.
 
 ---
