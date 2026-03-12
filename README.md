@@ -38,6 +38,9 @@ ESP32-based WiFi controller for animatronic props built around the [Mr. Chicken'
 | Looping ambient audio | `/audio/loop` command for continuous background sound |
 | Cue numbers | Numeric `/cue` topic mapping integers to sequence names for QLab/Isadora |
 | Status LED | NeoPixel showing WiFi/MQTT/sequence state |
+| Dynamic servo mapping | Config-driven channel map in config.json — define channel number, name, µs range, and neutral per servo. Sequences and commands reference channels by name rather than hardcoded numbers. Kit presets (raven, parrot) selectable at captive portal setup. Makes firmware kit-agnostic for parrot and future builds. |
+
+
 
 ---
 
