@@ -61,38 +61,56 @@ its own color scheme. The GitHub Pages demo will support kit switching live.
 A dedicated PCB replacing the hand-wired base enclosure. Designed in EasyEDA
 for fabrication via JLCPCB.
 
-**Board layout:**
+**Board connectors and components:**
 
-| Ref | Component | Notes |
-|-----|-----------|-------|
-| J1 | Barrel jack 5.5/2.1mm panel mount | 7.5V servo PSU in · CUI PJ-037A · 5A rated |
-| J2 | Barrel jack 5.5/2.1mm panel mount | 5V logic PSU in · CUI PJ-037A · 5A rated |
-| J3 | 4-pin header | SSC-32U leg cable · 7.5V · GND · TX · RX |
-| J4 | 2-pin screw terminal | Speaker out |
-| J5 | 3.5mm switched jack | Trigger input · GPIO 34 |
-| J6 | 3-pin header | NeoPixel status LED |
-| U1 | ESP32 WROOM 38-pin | Dev board socket — not soldered direct |
-| U2 | MAX98357A breakout | I2S amp · header mount |
-| U3 | INA219 | Current sensor onboard · I2C · monitors 7.5V servo rail |
-| C1 | 100µF 16V electrolytic | Audio bypass · MAX98357A VIN |
-| C2 | 100nF ceramic | Audio bypass · MAX98357A VIN |
-| C3 | 100nF ceramic | INA219 VCC bypass |
-| R1–R3 | 10kΩ 1/4W | Trigger pull-up · INA219 GAIN divider |
-| R4 | TBD | DAC → MAX98357A GAIN pin voltage divider |
-| D1 | 1N4148 | Trigger input ESD protection |
+| Ref | Part | Description | Notes |
+|-----|------|-------------|-------|
+| J1 | Switchcraft L721A | Panel mount power jack · 2.1mm · 5A · 30VDC | 7.5V servo PSU in · threaded lock bushing |
+| J2 | Switchcraft L721A | Panel mount power jack · 2.1mm · 5A · 30VDC | 5V logic PSU in · threaded lock bushing |
+| — | Switchcraft 768K | Mating locking plug · red tip · red handle | 7.5V servo pigtail — panel jack end |
+| — | Switchcraft 767K | Mating locking plug · red tip · black handle | 5V logic pigtail — panel jack end |
+| J3 | XHB-3A · pins 1+3 only | 3-pin connector · 2 wires populated | 7.5V servo board end · pin 2 empty for keying |
+| J4 | XHB-2A · both pins | 2-pin connector · 2 wires populated | 5V logic board end · won't mate with J3 |
+| J5 | 4-pin header | SSC-32U leg cable | 7.5V · GND · TX · RX |
+| J6 | 2-pin screw terminal | Speaker out | MAX98357A → speaker |
+| J7 | 3.5mm switched jack | Trigger input | GPIO 34 · contact closure |
+| J8 | 3-pin header | NeoPixel status LED | |
+| U1 | ESP32 WROOM 38-pin | Dev board | Header socket — field replaceable |
+| U2 | MAX98357A breakout | I2S amplifier | Header mount — field replaceable |
+| U3 | INA219 | Current sensor · onboard | I2C · monitors 7.5V servo rail |
+| C1 | 100µF 16V electrolytic | Audio bypass | MAX98357A VIN to GND |
+| C2 | 100nF ceramic | Audio bypass | MAX98357A VIN to GND |
+| C3 | 100nF ceramic | INA219 bypass | INA219 VCC to GND |
+| R1 | 10kΩ 1/4W | Trigger pull-up | GPIO 34 to 3.3V |
+| R2–R3 | 10kΩ 1/4W | INA219 I2C pull-up | SDA · SCL to 3.3V |
+| R4 | TBD | DAC → GAIN divider | GPIO 25 → MAX98357A GAIN · value TBD |
+| D1 | 1N4148 | Trigger ESD protection | In series on GPIO 34 input |
 
 **Power domains:**
-- 7.5V rail — J1 → J3 (SSC-32U) and INA219 sense input. Isolated from logic.
-- 5V rail — J2 → U1 VIN and U2 VIN.
-- Common GND bus — SSC-32U · ESP32 · MAX98357A · INA219 all tied.
+- 7.5V rail — J1 → J3 (XHB-3A keyed) → J5 (SSC-32U) and U3 INA219 sense input · isolated from logic
+- 5V rail — J2 → J4 (XHB-2A) → U1 VIN and U2 VIN
+- Common GND bus — SSC-32U · ESP32 · MAX98357A · INA219 all tied
+
+**Cross-connection protection — two independent layers:**
+- Layer 1 — geometry: XHB-3A (servo) and XHB-2A (logic) board connectors are physically
+  incompatible · the 7.5V pigtail cannot seat in the 5V socket regardless of orientation
+- Layer 2 — color: Switchcraft 768K red handle = 7.5V servo ·
+  767K black handle = 5V logic · panel jack end
 
 **Design notes:**
-- ESP32 and MAX98357A are header-mounted, not soldered direct — field replaceable
-- INA219 onboard eliminates breakout board, monitors servo rail current for stall detection
-- Board sized to fit base enclosure with panel-mount jacks at enclosure edge
-- Kit-agnostic — same board works for raven, parrot, and future kits
+- L721A twist-lock panel jacks rated 5A · 30VDC · 5000 insertion cycles · brass shell
+- XHB-3A pin 2 intentionally unpopulated — empty position is the mechanical key
+- ESP32 and MAX98357A header-mounted — field replaceable without reflowing
+- INA219 fully onboard — no breakout board, monitors servo rail for stall detection
+- Board sized to fit base enclosure with L721A jacks at enclosure panel edge
+- Kit-agnostic — same board works for raven, parrot, and future Mr. Chicken kits
 - Fabricate via JLCPCB (EasyEDA direct export)
 
+**Procurement:**
+- Switchcraft L721A, 767K, 768K — Digikey
+- XHB-2A, XHB-3A connectors and pigtail housings — Digikey or Amazon
+- All passives, INA219 — Digikey (batch with existing order)
+- PCB fabrication — JLCPCB via EasyEDA direct export
 ---
 
 ### v5.x — Additional Features
