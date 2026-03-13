@@ -56,6 +56,45 @@ its own color scheme. The GitHub Pages demo will support kit switching live.
 
 ---
 
+### v5.x — Carrier Board (EasyEDA / JLCPCB)
+
+A dedicated PCB replacing the hand-wired base enclosure. Designed in EasyEDA
+for fabrication via JLCPCB.
+
+**Board layout:**
+
+| Ref | Component | Notes |
+|-----|-----------|-------|
+| J1 | Barrel jack 5.5/2.1mm panel mount | 7.5V servo PSU in · CUI PJ-037A · 5A rated |
+| J2 | Barrel jack 5.5/2.1mm panel mount | 5V logic PSU in · CUI PJ-037A · 5A rated |
+| J3 | 4-pin header | SSC-32U leg cable · 7.5V · GND · TX · RX |
+| J4 | 2-pin screw terminal | Speaker out |
+| J5 | 3.5mm switched jack | Trigger input · GPIO 34 |
+| J6 | 3-pin header | NeoPixel status LED |
+| U1 | ESP32 WROOM 38-pin | Dev board socket — not soldered direct |
+| U2 | MAX98357A breakout | I2S amp · header mount |
+| U3 | INA219 | Current sensor onboard · I2C · monitors 7.5V servo rail |
+| C1 | 100µF 16V electrolytic | Audio bypass · MAX98357A VIN |
+| C2 | 100nF ceramic | Audio bypass · MAX98357A VIN |
+| C3 | 100nF ceramic | INA219 VCC bypass |
+| R1–R3 | 10kΩ 1/4W | Trigger pull-up · INA219 GAIN divider |
+| R4 | TBD | DAC → MAX98357A GAIN pin voltage divider |
+| D1 | 1N4148 | Trigger input ESD protection |
+
+**Power domains:**
+- 7.5V rail — J1 → J3 (SSC-32U) and INA219 sense input. Isolated from logic.
+- 5V rail — J2 → U1 VIN and U2 VIN.
+- Common GND bus — SSC-32U · ESP32 · MAX98357A · INA219 all tied.
+
+**Design notes:**
+- ESP32 and MAX98357A are header-mounted, not soldered direct — field replaceable
+- INA219 onboard eliminates breakout board, monitors servo rail current for stall detection
+- Board sized to fit base enclosure with panel-mount jacks at enclosure edge
+- Kit-agnostic — same board works for raven, parrot, and future kits
+- Fabricate via JLCPCB (EasyEDA direct export)
+
+---
+
 ### v5.x — Additional Features
 
 | Feature | Notes |
