@@ -2,6 +2,9 @@
 
 ESP32-based WiFi controller for animatronic props built around the [Mr. Chicken's Prop Shop Animatronic Raven Kit](https://chickenprops.com/products/animatronic-raven-kit) and compatible builds. v4 adds a **captive portal for first-time WiFi/MQTT setup**, **full runtime device configuration** (no hardcoded credentials), and a **three-level MQTT topic hierarchy** designed for multi-prop show environments. v4.1 hardens the firmware for show reliability with OTA updates, a hardware watchdog, MQTT last will, and WiFi auto-reconnect.
 
+## Interactive Demo
+👉 [Try the live demo](https://bryanhaven.github.io/raven-animatronic/)
+
 > **Upgrading from v3?** The only breaking change is that WiFi and MQTT credentials are no longer in `raven_config.h`. On first boot v4 will launch the setup AP — configure once, then it behaves exactly like v3.
 
 ---
@@ -19,14 +22,105 @@ ESP32-based WiFi controller for animatronic props built around the [Mr. Chicken'
 
 ---
 
-## Planned Features (v5+)
+## Planned Features
+
+### v5.x — Kit-Agnostic Architecture
+
+The v5.x release will refactor the firmware around a `kit.json` personality file,
+making the controller deployable on any Mr. Chicken's Prop Shop kit without code
+changes. The raven and parrot (when released) will each ship with their own
+`kit.json` — new kits can be added by dropping in a new file.
+
+**`kit.json` defines everything kit-specific:**
+
+| Section | Contents |
+|---------|----------|
+| Identity | Kit name, version, glyph (🐦‍⬛ / 🦜), manufacturer |
+| UI | Accent colors, theme name, control panel layout hints |
+| Servos | Channel map — name, channel number, µs min/max, speed, acceleration, neutral |
+| Sequences | Built-in sequence definitions referencing channels by name, not number |
+| Sounds | Default sound library and sound-to-sequence bindings |
+| MQTT | Kit type published in identity announcement, Home Assistant discovery payload |
+
+**`config.json` stays network/identity only** — WiFi, MQTT broker, device name,
+hostname. Clean separation between "what kind of bird" and "which bird on the network."
+
+**Captive portal kit selection** — first-boot setup asks which kit you're building
+and copies the appropriate preset into place. Kit can be changed later from the
+Settings tab without reflashing.
+
+**UI renders from kit.json** — control panel buttons, D-pad, and sequence list are
+generated from the servo and sequence definitions. A parrot with a crest servo gets
+a crest button automatically. The raven keeps its dark purple theme; the parrot gets
+its own color scheme. The GitHub Pages demo will support kit switching live.
+
+---
+
+### v5.x — Carrier Board (EasyEDA / JLCPCB)
+
+A dedicated PCB replacing the hand-wired base enclosure. Designed in EasyEDA
+for fabrication via JLCPCB.
+
+**Board connectors and components:**
+
+| Ref | Part | Description | Notes |
+|-----|------|-------------|-------|
+| J1 | Switchcraft L721A | Panel mount power jack · 2.1mm · 5A · 30VDC | 7.5V servo PSU in · threaded lock bushing |
+| J2 | Switchcraft L721A | Panel mount power jack · 2.1mm · 5A · 30VDC | 5V logic PSU in · threaded lock bushing |
+| — | Switchcraft 768K | Mating locking plug · red tip · red handle | 7.5V servo pigtail — panel jack end |
+| — | Switchcraft 767K | Mating locking plug · red tip · black handle | 5V logic pigtail — panel jack end |
+| J3 | XHB-3A · pins 1+3 only | 3-pin connector · 2 wires populated | 7.5V servo board end · pin 2 empty for keying |
+| J4 | XHB-2A · both pins | 2-pin connector · 2 wires populated | 5V logic board end · won't mate with J3 |
+| J5 | 4-pin header | SSC-32U leg cable | 7.5V · GND · TX · RX |
+| J6 | 2-pin screw terminal | Speaker out | MAX98357A → speaker |
+| J7 | 3.5mm switched jack | Trigger input | GPIO 34 · contact closure |
+| J8 | 3-pin header | NeoPixel status LED | |
+| U1 | ESP32 WROOM 38-pin | Dev board | Header socket — field replaceable |
+| U2 | MAX98357A breakout | I2S amplifier | Header mount — field replaceable |
+| U3 | INA219 | Current sensor · onboard | I2C · monitors 7.5V servo rail |
+| C1 | 100µF 16V electrolytic | Audio bypass | MAX98357A VIN to GND |
+| C2 | 100nF ceramic | Audio bypass | MAX98357A VIN to GND |
+| C3 | 100nF ceramic | INA219 bypass | INA219 VCC to GND |
+| R1 | 10kΩ 1/4W | Trigger pull-up | GPIO 34 to 3.3V |
+| R2–R3 | 10kΩ 1/4W | INA219 I2C pull-up | SDA · SCL to 3.3V |
+| R4 | TBD | DAC → GAIN divider | GPIO 25 → MAX98357A GAIN · value TBD |
+| D1 | 1N4148 | Trigger ESD protection | In series on GPIO 34 input |
+
+**Power domains:**
+- 7.5V rail — J1 → J3 (XHB-3A keyed) → J5 (SSC-32U) and U3 INA219 sense input · isolated from logic
+- 5V rail — J2 → J4 (XHB-2A) → U1 VIN and U2 VIN
+- Common GND bus — SSC-32U · ESP32 · MAX98357A · INA219 all tied
+
+**Cross-connection protection — two independent layers:**
+- Layer 1 — geometry: XHB-3A (servo) and XHB-2A (logic) board connectors are physically
+  incompatible · the 7.5V pigtail cannot seat in the 5V socket regardless of orientation
+- Layer 2 — color: Switchcraft 768K red handle = 7.5V servo ·
+  767K black handle = 5V logic · panel jack end
+
+**Design notes:**
+- L721A twist-lock panel jacks rated 5A · 30VDC · 5000 insertion cycles · brass shell
+- XHB-3A pin 2 intentionally unpopulated — empty position is the mechanical key
+- ESP32 and MAX98357A header-mounted — field replaceable without reflowing
+- INA219 fully onboard — no breakout board, monitors servo rail for stall detection
+- Board sized to fit base enclosure with L721A jacks at enclosure panel edge
+- Kit-agnostic — same board works for raven, parrot, and future Mr. Chicken kits
+- Fabricate via JLCPCB (EasyEDA direct export)
+
+**Procurement:**
+- Switchcraft L721A, 767K, 768K — Digikey
+- XHB-2A, XHB-3A connectors and pigtail housings — Digikey or Amazon
+- All passives, INA219 — Digikey (batch with existing order)
+- PCB fabrication — JLCPCB via EasyEDA direct export
+---
+
+### v5.x — Additional Features
 
 | Feature | Notes |
 |---------|-------|
-| Random idle behavior | Background task — random head/beak movements between cues, configurable interval |
+| Random idle behavior | Background task — random head/beak movements between cues, configurable interval and intensity per kit |
 | Conductor mode | One MQTT message fans out a timed sequence to multiple birds in a room |
 | Startup sync | All birds in a room wait for a sync message before moving to neutral |
-| Export/import config | Download full config as zip, clone to new bird by uploading |
+| Export/import config | Download full config + kit as zip, clone to new bird by uploading |
 | OTA SPIFFS update | Currently OTA covers firmware only — add filesystem update support |
 | Physical trigger input | 3.5mm jack → GPIO 34, fires configurable sequence on contact closure |
 | Current sensing | INA219 on VS+ rail — detect stalled/disconnected servos |
