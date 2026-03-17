@@ -2,9 +2,6 @@
 
 ESP32-based WiFi controller for animatronic props built around the [Mr. Chicken's Prop Shop Animatronic Raven Kit](https://chickenprops.com/products/animatronic-raven-kit) and compatible builds. v4 adds a **captive portal for first-time WiFi/MQTT setup**, **full runtime device configuration** (no hardcoded credentials), and a **three-level MQTT topic hierarchy** designed for multi-prop show environments. v4.1 hardens the firmware for show reliability with OTA updates, a hardware watchdog, MQTT last will, and WiFi auto-reconnect.
 
-## Interactive Demo
-👉 [Try the live demo](https://bryanhaven.github.io/raven-animatronic/)
-
 > **Upgrading from v3?** The only breaking change is that WiFi and MQTT credentials are no longer in `raven_config.h`. On first boot v4 will launch the setup AP — configure once, then it behaves exactly like v3.
 
 ---
@@ -12,7 +9,7 @@ ESP32-based WiFi controller for animatronic props built around the [Mr. Chicken'
 ## Version History
 
 | Version | Summary |
-|---------|---------|
+| --- | --- |
 | **v4.1.1** | Bug fixes: watchdog API corrected for installed toolchain (`esp_task_wdt_init` replaces IDF 5.x struct API); captive portal now validates Device Name and Hostname as required fields; firmware fallback populates blank name/hostname from Device ID so mDNS always starts |
 | **v4.1** | Show hardening: OTA firmware updates over WiFi, hardware watchdog (30s), MQTT last will (`offline`/`online` on `{prefix}/status`), WiFi auto-reconnect with exponential backoff |
 | **v4.0** | Captive portal first-time setup (BirdSetup AP), runtime config.json, three-level MQTT topic hierarchy (location/room/device), Settings tab in web UI, Reset to AP mode button, identity announcement on MQTT connect |
@@ -22,109 +19,20 @@ ESP32-based WiFi controller for animatronic props built around the [Mr. Chicken'
 
 ---
 
-## Planned Features
-
-### v5.x — Kit-Agnostic Architecture
-
-The v5.x release will refactor the firmware around a `kit.json` personality file,
-making the controller deployable on any Mr. Chicken's Prop Shop kit without code
-changes. The raven and parrot (when released) will each ship with their own
-`kit.json` — new kits can be added by dropping in a new file.
-
-**`kit.json` defines everything kit-specific:**
-
-| Section | Contents |
-|---------|----------|
-| Identity | Kit name, version, glyph (🐦‍⬛ / 🦜), manufacturer |
-| UI | Accent colors, theme name, control panel layout hints |
-| Servos | Channel map — name, channel number, µs min/max, speed, acceleration, neutral |
-| Sequences | Built-in sequence definitions referencing channels by name, not number |
-| Sounds | Default sound library and sound-to-sequence bindings |
-| MQTT | Kit type published in identity announcement, Home Assistant discovery payload |
-
-**`config.json` stays network/identity only** — WiFi, MQTT broker, device name,
-hostname. Clean separation between "what kind of bird" and "which bird on the network."
-
-**Captive portal kit selection** — first-boot setup asks which kit you're building
-and copies the appropriate preset into place. Kit can be changed later from the
-Settings tab without reflashing.
-
-**UI renders from kit.json** — control panel buttons, D-pad, and sequence list are
-generated from the servo and sequence definitions. A parrot with a crest servo gets
-a crest button automatically. The raven keeps its dark purple theme; the parrot gets
-its own color scheme. The GitHub Pages demo will support kit switching live.
-
----
-
-### v5.x — Carrier Board (EasyEDA / JLCPCB)
-
-A dedicated PCB replacing the hand-wired base enclosure. Designed in EasyEDA
-for fabrication via JLCPCB.
-
-**Board connectors and components:**
-
-| Ref | Part | Description | Notes |
-|-----|------|-------------|-------|
-| J1 | Switchcraft L721A | Panel mount power jack · 2.1mm · 5A · 30VDC | 7.5V servo PSU in · threaded lock bushing |
-| J2 | Switchcraft L721A | Panel mount power jack · 2.1mm · 5A · 30VDC | 5V logic PSU in · threaded lock bushing |
-| — | Switchcraft 768K | Mating locking plug · red tip · red handle | 7.5V servo pigtail — panel jack end |
-| — | Switchcraft 767K | Mating locking plug · red tip · black handle | 5V logic pigtail — panel jack end |
-| J3 | XHB-3A · pins 1+3 only | 3-pin connector · 2 wires populated | 7.5V servo board end · pin 2 empty for keying |
-| J4 | XHB-2A · both pins | 2-pin connector · 2 wires populated | 5V logic board end · won't mate with J3 |
-| J5 | 4-pin header | SSC-32U leg cable | 7.5V · GND · TX · RX |
-| J6 | 2-pin screw terminal | Speaker out | MAX98357A → speaker |
-| J7 | 3.5mm switched jack | Trigger input | GPIO 34 · contact closure |
-| J8 | 3-pin header | NeoPixel status LED | |
-| U1 | ESP32 WROOM 38-pin | Dev board | Header socket — field replaceable |
-| U2 | MAX98357A breakout | I2S amplifier | Header mount — field replaceable |
-| U3 | INA219 | Current sensor · onboard | I2C · monitors 7.5V servo rail |
-| C1 | 100µF 16V electrolytic | Audio bypass | MAX98357A VIN to GND |
-| C2 | 100nF ceramic | Audio bypass | MAX98357A VIN to GND |
-| C3 | 100nF ceramic | INA219 bypass | INA219 VCC to GND |
-| R1 | 10kΩ 1/4W | Trigger pull-up | GPIO 34 to 3.3V |
-| R2–R3 | 10kΩ 1/4W | INA219 I2C pull-up | SDA · SCL to 3.3V |
-| R4 | TBD | DAC → GAIN divider | GPIO 25 → MAX98357A GAIN · value TBD |
-| D1 | 1N4148 | Trigger ESD protection | In series on GPIO 34 input |
-
-**Power domains:**
-- 7.5V rail — J1 → J3 (XHB-3A keyed) → J5 (SSC-32U) and U3 INA219 sense input · isolated from logic
-- 5V rail — J2 → J4 (XHB-2A) → U1 VIN and U2 VIN
-- Common GND bus — SSC-32U · ESP32 · MAX98357A · INA219 all tied
-
-**Cross-connection protection — two independent layers:**
-- Layer 1 — geometry: XHB-3A (servo) and XHB-2A (logic) board connectors are physically
-  incompatible · the 7.5V pigtail cannot seat in the 5V socket regardless of orientation
-- Layer 2 — color: Switchcraft 768K red handle = 7.5V servo ·
-  767K black handle = 5V logic · panel jack end
-
-**Design notes:**
-- L721A twist-lock panel jacks rated 5A · 30VDC · 5000 insertion cycles · brass shell
-- XHB-3A pin 2 intentionally unpopulated — empty position is the mechanical key
-- ESP32 and MAX98357A header-mounted — field replaceable without reflowing
-- INA219 fully onboard — no breakout board, monitors servo rail for stall detection
-- Board sized to fit base enclosure with L721A jacks at enclosure panel edge
-- Kit-agnostic — same board works for raven, parrot, and future Mr. Chicken kits
-- Fabricate via JLCPCB (EasyEDA direct export)
-
-**Procurement:**
-- Switchcraft L721A, 767K, 768K — Digikey
-- XHB-2A, XHB-3A connectors and pigtail housings — Digikey or Amazon
-- All passives, INA219 — Digikey (batch with existing order)
-- PCB fabrication — JLCPCB via EasyEDA direct export
----
-
-### v5.x — Additional Features
+## Planned Features (v5+)
 
 | Feature | Notes |
-|---------|-------|
-| Random idle behavior | Background task — random head/beak movements between cues, configurable interval and intensity per kit |
+| --- | --- |
+| Kit-agnostic architecture | `kit.json` defines servo mapping, NeoPixel config, and personality per prop type |
+| Glowing eyes | WS2812B/WS2813 LEDs behind glass lenses — daisy-chained on NeoPixel line as pixels 1 & 2, status LED becomes pixel 0. Eye color, effects, and blink timing defined per-kit in kit.json |
+| Random idle behavior | Background task — random head/beak movements between cues, configurable interval |
 | Conductor mode | One MQTT message fans out a timed sequence to multiple birds in a room |
 | Startup sync | All birds in a room wait for a sync message before moving to neutral |
-| Export/import config | Download full config + kit as zip, clone to new bird by uploading |
+| Export/import config | Download full config as zip, clone to new bird by uploading |
 | OTA SPIFFS update | Currently OTA covers firmware only — add filesystem update support |
 | Physical trigger input | 3.5mm jack → GPIO 34, fires configurable sequence on contact closure |
 | Current sensing | INA219 on VS+ rail — detect stalled/disconnected servos |
-| Audio volume control | DAC on GPIO 25 → MAX98357A GAIN pin via resistor divider |
+| Audio volume control | Configurable gain via MAX98357A GAIN pin |
 | Audio ducking | Lower ambient audio level during cue sequences |
 | Looping ambient audio | `/audio/loop` command for continuous background sound |
 | Cue numbers | Numeric `/cue` topic mapping integers to sequence names for QLab/Isadora |
@@ -134,35 +42,38 @@ for fabrication via JLCPCB.
 
 ## What's New in v4.1 — Show Hardening
 
-- **OTA firmware updates** — flash new firmware over WiFi without USB. Password defaults to the device's Device ID (e.g. `raven1`). To use, uncomment three lines in `platformio.ini` and run upload normally — PlatformIO finds the bird on the network automatically.
-- **Hardware watchdog** — 30-second timeout. If the firmware hangs for any reason the ESP32 automatically reboots. Armed after all init completes to avoid false trips during startup.
-- **MQTT last will** — the broker automatically publishes `offline` to `{prefix}/status` the moment a bird drops off unexpectedly. When the bird reconnects it publishes `online`, clearing the retained message. Your show controller always knows the true state of every prop.
-- **WiFi auto-reconnect** — if WiFi drops mid-show, the firmware retries automatically with exponential backoff: 5s → 10s → 20s → 40s → 60s (cap), resetting to 5s on successful reconnect. MQTT reconnects automatically once WiFi is restored.
+* **OTA firmware updates** — flash new firmware over WiFi without USB. Password defaults to the device's Device ID (e.g. `raven1`). To use, uncomment three lines in `platformio.ini` and run upload normally — PlatformIO finds the bird on the network automatically.
+* **Hardware watchdog** — 30-second timeout. If the firmware hangs for any reason the ESP32 automatically reboots. Armed after all init completes to avoid false trips during startup.
+* **MQTT last will** — the broker automatically publishes `offline` to `{prefix}/status` the moment a bird drops off unexpectedly. When the bird reconnects it publishes `online`, clearing the retained message. Your show controller always knows the true state of every prop.
+* **WiFi auto-reconnect** — if WiFi drops mid-show, the firmware retries automatically with exponential backoff: 5s → 10s → 20s → 40s → 60s (cap), resetting to 5s on successful reconnect. MQTT reconnects automatically once WiFi is restored.
 
 ---
 
 ## What's New in v4.0
 
-- **Captive portal setup** — on first boot (or after a reset) the ESP32 becomes a WiFi access point called `BirdSetup`. Connect any phone or laptop, get an automatic popup, fill in WiFi and MQTT details, save. Done.
-- **Runtime device configuration** — all identity, WiFi, and MQTT settings live in `config.json` on SPIFFS. Edit from the new Settings tab in the web UI without reflashing.
-- **Three-level MQTT topic hierarchy** — `location/room/device` (e.g. `props/tiki_bar/parrot1`). Supports MQTT wildcard broadcasting to whole rooms.
-- **Settings tab** — edit device name, hostname, MQTT prefix, broker, and WiFi from the browser. Auto-reboots if WiFi or MQTT settings change.
-- **Reset to AP mode** — one button in Settings wipes `config.json` and restarts as `BirdSetup` for reconfiguration.
-- **Identity announcement** — on MQTT connect the bird publishes its name, hostname, IP, and full topic prefix to `{prefix}/identity` so show controllers always know what's on the network.
-- **Multi-prop ready** — flash the same firmware to every bird. Configure each individually through the portal. Use MQTT wildcards to control whole rooms at once.
+* **Captive portal setup** — on first boot (or after a reset) the ESP32 becomes a WiFi access point called `BirdSetup`. Connect any phone or laptop, get an automatic popup, fill in WiFi and MQTT details, save. Done.
+* **Runtime device configuration** — all identity, WiFi, and MQTT settings live in `config.json` on SPIFFS. Edit from the new Settings tab in the web UI without reflashing.
+* **Three-level MQTT topic hierarchy** — `location/room/device` (e.g. `props/tiki_bar/parrot1`). Supports MQTT wildcard broadcasting to whole rooms.
+* **Settings tab** — edit device name, hostname, MQTT prefix, broker, and WiFi from the browser. Auto-reboots if WiFi or MQTT settings change.
+* **Reset to AP mode** — one button in Settings wipes `config.json` and restarts as `BirdSetup` for reconfiguration.
+* **Identity announcement** — on MQTT connect the bird publishes its name, hostname, IP, and full topic prefix to `{prefix}/identity` so show controllers always know what's on the network.
+* **Multi-prop ready** — flash the same firmware to every bird. Configure each individually through the portal. Use MQTT wildcards to control whole rooms at once.
 
 ---
 
 ## Hardware
 
 ### Raven Mechanic Kit
+
 **Mr. Chicken's Prop Shop — Animatronic Raven Kit**
-- https://chickenprops.com/products/animatronic-raven-kit
-- Available in **Basic** (mechanical parts only), **Deluxe** (Basic + servos), and **Bare Bones** (custom parts only) configurations
+
+* <https://chickenprops.com/products/animatronic-raven-kit>
+* Available in **Basic** (mechanical parts only), **Deluxe** (Basic + servos), and **Bare Bones** (custom parts only) configurations
 
 ### Servos (per kit documentation)
+
 | Qty | Part | Role |
-|-----|------|------|
+| --- | --- | --- |
 | 1× | Hitec HS-53 | Beak open/close |
 | 3× | Hitec HS-425BB | Head pan, head tilt, body bob |
 | 1× | Hitec HS-645MG | Wings (single servo, both wings mechanically linked) |
@@ -170,12 +81,15 @@ for fabrication via JLCPCB.
 > The Deluxe Kit includes all servos. Check specs before substituting — voltage and torque ranges matter.
 
 ### Electronics
+
 | Component | Exact Part | Notes |
-|-----------|-----------|-------|
-| Microcontroller | ELEGOO ESP32 Dev Board (38-pin WROOM, CP2102) | Any `esp32dev` board works |
+| --- | --- | --- |
+| Microcontroller | DOIT ESP32 DevKit V1 (30-pin WROOM) | Any `esp32dev` board works |
+| Carrier PCB | Raven Animatronic Controller PCB v1.0 | 100×60mm, JLCPCB fabricated — see `/pcb` directory |
 | Servo Controller | Lynxmotion SSC-32U | USB + full-duplex UART |
 | Audio Amplifier | Adafruit MAX98357A I2S Breakout — PID: 3006 | 3W Class D, I2S input |
 | Speaker | Adafruit Mono Enclosed Speaker 3W 4Ω — PID: 4445 | 2.8" × 1.2", bare wire leads |
+| Current Monitor | INA219BIDR (SOIC-8) | Monitors servo current on +7.5V rail, I2C address 0x40 |
 | Servo PSU | Mean Well GST60A07-P1J (7.5V 5A, 37.5W) | See Power Supplies section |
 | Logic PSU | Mean Well GST25A05-P1J (5V 4A, 20W) | Powers ESP32 + MAX98357A |
 
@@ -192,16 +106,16 @@ Mean Well's GST desktop adapter series doesn't offer 6V — it jumps from 5V to 
 **Mean Well GST60A07-P1J** — 7.5V, 5A, 37.5W desktop adapter.
 The SSC-32U has an adjustable trimmer on the VS+ rail — trim down to 6V if your servos prefer it.
 
-- IEC C14 inlet — requires IEC C13 power cord (not included)
-- 2.1×5.5mm barrel output, centre positive
-- Connects to SSC-32U **VS+** (red) and **GND** (black) terminals
+* IEC C14 inlet — requires IEC C13 power cord (not included)
+* 2.1×5.5mm barrel output, centre positive
+* Connects to SSC-32U **VS+** (red) and **GND** (black) terminals
 
 ### Domain 2 — ESP32 + Audio (5V, low current)
 
 **Mean Well GST25A05-P1J** — 5V, 4A, 20W desktop adapter.
 
-- IEC C14 inlet — requires IEC C13 power cord (not included)
-- Connects to ESP32 **VIN**; MAX98357A VIN connects to ESP32 5V pin
+* IEC C14 inlet — requires IEC C13 power cord (not included)
+* Connects to ESP32 **VIN**; MAX98357A VIN connects to ESP32 5V pin
 
 ### Critical ground tie
 
@@ -227,19 +141,24 @@ SSC-32U GND  ──→  ESP32 GND    ← REQUIRED — UART won't work without th
 
 ### ESP32 → SSC-32U (UART Serial)
 
-| ESP32 Pin | SSC-32U Pin | Notes |
-|-----------|-------------|-------|
-| GPIO 22 (TX) | RX | Commands to servo controller |
-| GPIO 23 (RX) | TX | Done signal back to ESP32 |
-| GND | GND | Common ground — required |
+> **Carrier PCB v1.0:** connect via J5 (XHB-4A). +7.5V servo power is routed through R_SHUNT on the carrier board.
+
+| ESP32 Pin | J5 Pin | SSC-32U Pin | Notes |
+| --- | --- | --- | --- |
+| GPIO 17 (TX2) | 3 | RX | Commands to servo controller |
+| GPIO 16 (RX2) | 2 | TX | Done signal back to ESP32 |
+| GND | 1 | GND | Common ground — required |
+| +7.5V | 4 | VS+ | Servo power via R_SHUNT |
 
 ### ESP32 → MAX98357A (I2S Audio)
 
+> **Note:** BCLK and LRC pins swapped from v4.x for PCB routing — update firmware defines.
+
 | ESP32 Pin | MAX98357A Pin | Notes |
-|-----------|--------------|-------|
-| GPIO 27 | BCLK | Bit clock |
-| GPIO 14 | LRC | Left/Right clock |
-| GPIO 13 | DIN | Serial audio data |
+| --- | --- | --- |
+| GPIO 26 | BCLK | Bit clock — swapped from v4.x GPIO 27 |
+| GPIO 27 | LRC | Left/Right clock — swapped from v4.x GPIO 14 |
+| GPIO 25 | DIN | Serial audio data |
 | 3.3V | SD_MODE | Tie high — always on |
 | 5V | VIN | Power |
 | GND | GND | Common ground |
@@ -248,10 +167,41 @@ SSC-32U GND  ──→  ESP32 GND    ← REQUIRED — UART won't work without th
 
 **Speaker (PID:4445):** connect bare wires directly to OUT+ and OUT−. No capacitor needed.
 
+### ESP32 → INA219 (I2C Current Monitor)
+
+> **Note:** SDA and SCL pins swapped from v4.x defaults for PCB routing — update firmware defines.
+
+| ESP32 Pin | INA219 Pin | Notes |
+| --- | --- | --- |
+| GPIO 22 | SDA | I2C data — swapped from v4.x GPIO 21 |
+| GPIO 21 | SCL | I2C clock — swapped from v4.x GPIO 22 |
+| 3.3V | VS | Power |
+| GND | GND | Common ground |
+
+I2C address: **0x40** (A0 and A1 tied to GND)
+
+Shunt resistor R_SHUNT: 0.1Ω 2W 2512 on +7.5V rail between J3 and J5.
+
+### NeoPixel Chain
+
+The NeoPixel connector J8 (XHB-3A) supports a daisy-chained WS2812B/WS2813 LED string:
+
+| Pixel index | Function | Notes |
+| --- | --- | --- |
+| 0 | Status LED | Shows WiFi/MQTT/sequence state |
+| 1 | Eye left | Optional — enabled in kit.json |
+| 2 | Eye right | Optional — enabled in kit.json |
+
+For builds without eyes, set `neopixel.count = 1` in kit.json.
+
+**WS2813 recommended** for production props — dual data line prevents chain failure if one LED dies.
+
+Add a **300–500Ω resistor** in series on the DAT line at J8 for noise immunity on long runs alongside servo PWM wiring.
+
 ### SSC-32U Servo Channel Map
 
 | Channel | Servo | Movement |
-|---------|-------|----------|
+| --- | --- | --- |
 | CH 0 | Hitec HS-53 | Beak open / close |
 | CH 1 | Hitec HS-425BB | Head pan — left / right |
 | CH 2 | Hitec HS-425BB | Head tilt — up / down |
@@ -261,14 +211,91 @@ SSC-32U GND  ──→  ESP32 GND    ← REQUIRED — UART won't work without th
 
 ---
 
+## Carrier PCB
+
+PCB design files are in the `/pcb` directory:
+
+| File | Description |
+| --- | --- |
+| `Gerber_PCB1_2026-03-14.zip` | Gerber files for JLCPCB fabrication |
+| `BOM_Board1_PCB1_2026-03-14.xlsx` | Bill of Materials |
+| `CPL_JLCPCB.xlsx` | Pick and Place file for JLCPCB assembly |
+| `firmware-pcb-v1-notes.md` | Full pin change notes for v5.x firmware |
+
+**Board specs:** 100×60mm · 2-layer · 3mm corner radius · M3 corner mounting holes
+
+**Connectors:**
+
+| Ref | Type | Function |
+| --- | --- | --- |
+| J3 | XHB-3A | +7.5V power in (pin 1=+7.5V, pin 2=GND, pin 3=NC) |
+| J4 | XHB-2A | +5V power in (pin 1=+5V, pin 2=GND) |
+| J5 | XHB-4A | SSC-32U (pin 1=GND, pin 2=RX, pin 3=TX, pin 4=+7.5V) |
+| J7b | XHB-3A | Trigger jack landing (pin 1=+3.3V, pin 2=SIG, pin 3=GND) |
+| J8 | XHB-3A | NeoPixel (pin 1=+5V, pin 2=DAT, pin 3=GND) |
+
+**Hand-install after JLCPCB assembly:**
+- DOIT ESP32 DevKit V1 30-pin (into H1/H2 female headers — LCSC C7499333)
+- Adafruit MAX98357A breakout PID:3006 (into U2 header, secured with M2.5 screws at U8/U9)
+
+---
+
+## kit.json — NeoPixel / Eyes Configuration
+
+The v5.x kit.json spec includes a `neopixel` block for per-kit LED personality:
+
+**Parrot (with glowing eyes):**
+```json
+{
+  "kit": "parrot",
+  "neopixel": {
+    "count": 3,
+    "pixels": {
+      "status": 0,
+      "eye_left": 1,
+      "eye_right": 2
+    },
+    "eyes": {
+      "enabled": true,
+      "idle_color": [255, 60, 0],
+      "idle_effect": "breathe",
+      "trigger_color": [255, 0, 0],
+      "trigger_effect": "snap",
+      "blink_enabled": true,
+      "blink_interval_min_ms": 3000,
+      "blink_interval_max_ms": 8000
+    }
+  }
+}
+```
+
+**Raven (status LED only):**
+```json
+{
+  "kit": "raven",
+  "neopixel": {
+    "count": 1,
+    "pixels": {
+      "status": 0
+    },
+    "eyes": {
+      "enabled": false
+    }
+  }
+}
+```
+
+---
+
 ## Software Setup
 
 ### Prerequisites
-- [PlatformIO](https://platformio.org/) (VS Code extension recommended)
+
+* [PlatformIO](https://platformio.org/) (VS Code extension recommended)
 
 ### 1. Upload filesystem
 
-```bash
+```
 pio run --target uploadfs --environment esp32dev
 ```
 
@@ -276,7 +303,7 @@ Uploads `index.html`, `sounds.json`, and `positions.json`. Note: `config.json` i
 
 ### 2. Upload firmware
 
-```bash
+```
 pio run --target upload --environment esp32dev
 ```
 
@@ -284,18 +311,19 @@ pio run --target upload --environment esp32dev
 
 1. Power on the ESP32 — no `config.json` exists yet
 2. On your phone or laptop, connect to the **`BirdSetup`** WiFi network
-3. A setup page should pop up automatically (captive portal). If it doesn't, navigate to **http://192.168.4.1**
+3. A setup page should pop up automatically (captive portal). If it doesn't, navigate to **<http://192.168.4.1>**
 4. Fill in all fields and click **Save & Connect**
 5. The device reboots and joins your WiFi network
 6. Navigate to **http://`[hostname]`.local** (e.g. `http://raven1.local`)
 
 ### 4. Monitor serial output
 
-```bash
+```
 pio device monitor --environment esp32dev
 ```
 
 Expected boot output after setup:
+
 ```
 [bird] Booting v4...
 [device] Loaded: Raven 1  prefix: props/study/raven1
@@ -310,7 +338,7 @@ Expected boot output after setup:
 ## Captive Portal Setup Fields
 
 | Field | Example | Notes |
-|-------|---------|-------|
+| --- | --- | --- |
 | Device Name | `Raven 1` | Display label in the web UI header |
 | Hostname | `raven1` | Used for `http://raven1.local` — lowercase, no spaces |
 | Location | `props` | Top level of MQTT topic hierarchy |
@@ -322,6 +350,7 @@ Expected boot output after setup:
 | WiFi Password | `••••••••` | Your WiFi password |
 
 The three MQTT fields build the full prefix automatically:
+
 ```
 props / study / raven1  →  props/study/raven1/sequence
 ```
@@ -333,11 +362,11 @@ props / study / raven1  →  props/study/raven1/sequence
 Flash the **same firmware binary** to every bird. Configure each individually through the portal:
 
 | Bird | Location | Room | Device | Full prefix |
-|------|----------|------|--------|-------------|
+| --- | --- | --- | --- | --- |
 | Raven 1 | props | study | raven1 | `props/study/raven1` |
 | Raven 2 | props | study | raven2 | `props/study/raven2` |
-| Parrot 1 | props | tiki_bar | parrot1 | `props/tiki_bar/parrot1` |
-| Parrot 2 | props | tiki_bar | parrot2 | `props/tiki_bar/parrot2` |
+| Parrot 1 | props | tiki\_bar | parrot1 | `props/tiki_bar/parrot1` |
+| Parrot 2 | props | tiki\_bar | parrot2 | `props/tiki_bar/parrot2` |
 
 ### MQTT Wildcard Broadcasting
 
@@ -354,7 +383,7 @@ props/tiki_bar/+/sequence
 props/+/+/sequence
 ```
 
-### MMM Discovery — All Birds at Once
+### Discovery — All Birds at Once
 
 On show startup, publish `all` to `props/+/+/query`. Every bird will respond on its own `{prefix}/identity`, `{prefix}/sounds/list`, and `{prefix}/sequences/list` topics.
 
@@ -367,7 +396,7 @@ All topics are relative to the device's configured prefix (e.g. `props/study/rav
 ### Subscribe — Send to Bird
 
 | Leaf topic | Example payload | Effect |
-|------------|----------------|--------|
+| --- | --- | --- |
 | `/command` | `beak_open`, `head_left`, `neutral`… | Single move |
 | `/sequence` | `caw`, `alert`, `wingflap`, `idle`, `sleep` | Built-in sequence |
 | `/sequence` | `my_sequence_name` | Saved keyframe sequence |
@@ -379,7 +408,7 @@ All topics are relative to the device's configured prefix (e.g. `props/study/rav
 ### Publish — Bird Sends
 
 | Leaf topic | Payload | When |
-|------------|---------|------|
+| --- | --- | --- |
 | `/status` | status string | After every action |
 | `/identity` | JSON: name, hostname, ip, prefix | On connect + identity query |
 | `/sounds/list` | JSON sound library | On connect + query |
@@ -390,24 +419,30 @@ All topics are relative to the device's configured prefix (e.g. `props/study/rav
 ## Web Interface
 
 ### Control Tab
+
 Sequences, head D-pad, beak/wings, body bob, raw servo sliders, and custom keyframe sequences. The live indicator pill shows the active sequence.
 
 ### Sounds Tab
+
 Upload WAV files via drag-and-drop, assign bound sequences, manage SPIFFS storage.
 
 ### Calibrate Tab
+
 Tune every named servo position live — Test button moves the servo immediately. Save All persists to `positions.json`.
 
 ### Sequences Tab
+
 Keyframe editor — pose the bird, Add Keyframe, repeat, name, save. Saved sequences appear immediately in Control tab and are playable via MQTT.
 
 ### Settings Tab *(new in v4)*
+
 Edit all device configuration post-setup without the portal:
-- Device name, hostname
-- MQTT location / room / device ID (shows built prefix live)
-- MQTT broker and port
-- WiFi credentials
-- **Reset to Setup AP** — wipes `config.json`, reboots as `BirdSetup`
+
+* Device name, hostname
+* MQTT location / room / device ID (shows built prefix live)
+* MQTT broker and port
+* WiFi credentials
+* **Reset to Setup AP** — wipes `config.json`, reboots as `BirdSetup`
 
 > WiFi or MQTT changes trigger an automatic reboot to reconnect.
 
@@ -416,7 +451,7 @@ Edit all device configuration post-setup without the portal:
 ## HTTP API Reference
 
 | Method | Endpoint | Description |
-|--------|----------|-------------|
+| --- | --- | --- |
 | GET | `/api/config` | Current device config JSON (password masked) |
 | POST | `/api/config` | Update device config — reboots if WiFi/MQTT changed |
 | POST | `/api/reconfigure` | Wipe config and reboot as setup AP |
@@ -456,6 +491,11 @@ raven-animatronic-v4/
 │   ├── raven_webui.h       ← ESPAsyncWebServer, WebSocket, HTTP API
 │   ├── raven_mqtt.h        ← MQTT client — runtime topic prefix, identity announce
 │   └── raven_mdns.h        ← mDNS — runtime hostname
+├── pcb/
+│   ├── Gerber_PCB1_2026-03-14.zip
+│   ├── BOM_Board1_PCB1_2026-03-14.xlsx
+│   ├── CPL_JLCPCB.xlsx
+│   └── firmware-pcb-v1-notes.md
 └── src/
     └── main.cpp            ← Boot flow: captive portal check → WiFi → full init
 ```
@@ -467,13 +507,14 @@ raven-animatronic-v4/
 ## Troubleshooting
 
 | Symptom | Likely cause | Fix |
-|---------|-------------|-----|
+| --- | --- | --- |
 | `BirdSetup` AP doesn't appear | Firmware not flashed | Check serial output, reflash |
-| Setup popup doesn't appear | Captive portal not triggered | Navigate to http://192.168.4.1 manually |
+| Setup popup doesn't appear | Captive portal not triggered | Navigate to <http://192.168.4.1> manually |
 | `raven1.local` not found after setup | mDNS blocked on network | Use IP address shown in serial output |
-| Servos not responding | No UART comms | Check GPIO 22/23, SSC-32U baud 9600 |
+| Servos not responding | Wrong UART pins | Check GPIO 16/17 on carrier PCB v1.0 |
 | Servos jitter / ESP resets | Servo PSU on ESP32 rail | Isolate servo power to SSC-32U VS+ only |
-| No audio | I2S wiring | Check GPIO 27/14/13, SD_MODE tied to 3.3V |
+| No audio | I2S wiring | Check GPIO 26/27/25 — changed from v4.x |
+| I2C not working | SDA/SCL swapped | GPIO 22=SDA, GPIO 21=SCL on carrier PCB v1.0 |
 | MQTT not connecting | Wrong broker / port | Check Settings tab, verify broker is reachable |
 | Multiple birds, same MQTT client ID | Not possible in v4 | Client IDs are now randomised per connection |
 | Need to change WiFi after setup | — | Settings tab → update SSID/password → Save (auto-reboots) |
@@ -483,12 +524,12 @@ raven-animatronic-v4/
 
 ## Resources
 
-- [Mr. Chicken's Build Resources (Google Drive)](https://drive.google.com/drive/u/0/folders/1Ht4HYf0q8vE1VhdCadyyANCFJWSVyEcL)
-- [Raven Builders Facebook Group](https://www.facebook.com/groups/185149192169022/)
-- [Lynxmotion SSC-32U Documentation](https://www.lynxmotion.com/c-153-ssc-32u.aspx)
-- [Adafruit MAX98357A Guide](https://learn.adafruit.com/adafruit-max98357-i2s-class-d-mono-amp)
-- [Mean Well GST60A07-P1J Datasheet](https://www.meanwell.com/Upload/PDF/GST60A/GST60A-SPEC.PDF)
-- [PlatformIO ESP32 Reference](https://docs.platformio.org/en/latest/boards/espressif32/esp32dev.html)
+* [Mr. Chicken's Build Resources (Google Drive)](https://drive.google.com/drive/u/0/folders/1Ht4HYf0q8vE1VhdCadyyANCFJWSVyEcL)
+* [Raven Builders Facebook Group](https://www.facebook.com/groups/185149192169022/)
+* [Lynxmotion SSC-32U Documentation](https://www.lynxmotion.com/c-153-ssc-32u.aspx)
+* [Adafruit MAX98357A Guide](https://learn.adafruit.com/adafruit-max98357-i2s-class-d-mono-amp)
+* [Mean Well GST60A07-P1J Datasheet](https://www.meanwell.com/Upload/PDF/GST60A/GST60A-SPEC.PDF)
+* [PlatformIO ESP32 Reference](https://docs.platformio.org/en/latest/boards/espressif32/esp32dev.html)
 
 ---
 
