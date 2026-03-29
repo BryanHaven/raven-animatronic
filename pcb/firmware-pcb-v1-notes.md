@@ -55,7 +55,7 @@ Wire.begin(I2C_SDA, I2C_SCL);
 
 | Signal | v4.x Pin | v1.0 PCB Pin | Notes |
 |--------|----------|--------------|-------|
-| TRIGGER_IN | GPIO 34 | GPIO 34 | Unchanged — input only pin |
+| TRIGGER_1_IN | GPIO 34 | GPIO 34 | Unchanged — input only pin |
 
 ---
 
@@ -64,6 +64,98 @@ Wire.begin(I2C_SDA, I2C_SCL);
 | Signal | v4.x Pin | v1.0 PCB Pin | Notes |
 |--------|----------|--------------|-------|
 | NEOPIXEL | GPIO 4 | GPIO 4 | Unchanged |
+
+---
+
+### Audio Volume Control (MAX98357A GAIN pin)
+
+**PCB change required before fabrication:** Route MAX98357A GAIN pin to **GPIO 33 (D33)**.
+
+| Signal | Pin | Notes |
+|--------|-----|-------|
+| I2S_GAIN | GPIO 33 | MAX98357A GAIN — drive LOW=12dB, INPUT/float=9dB, HIGH=6dB |
+
+**EasyEDA change:** Add trace from MAX98357A U2 GAIN pad to ESP32 header pin D33.
+
+Three volume levels are achievable in firmware by switching the GPIO mode:
+```cpp
+pinMode(I2S_GAIN, OUTPUT); digitalWrite(I2S_GAIN, LOW);   // 12 dB (loudest)
+pinMode(I2S_GAIN, INPUT);                                   //  9 dB (default / float)
+pinMode(I2S_GAIN, OUTPUT); digitalWrite(I2S_GAIN, HIGH);   //  6 dB (quietest)
+```
+
+> If GAIN is left unconnected (no trace to GPIO 33) the amp defaults to 9 dB — behaviour is identical to v1.0.
+
+---
+
+### Audio Mute / Ducking (MAX98357A SD_MODE pin)
+
+**PCB change required before fabrication:** Route MAX98357A SD_MODE pin to **GPIO 32 (D32)** instead of hard-tying to 3.3V.
+
+| Signal | Pin | Notes |
+|--------|-----|-------|
+| I2S_SD_MODE | GPIO 32 | MAX98357A SD_MODE — OUTPUT HIGH=amp on, OUTPUT LOW=mute/shutdown |
+
+**EasyEDA change:** Remove 3.3V tie on MAX98357A U2 SD_MODE pad; add trace to ESP32 header pin D32.
+
+D32 and D33 are adjacent on the DevKit — route GAIN (D33) and SD_MODE (D32) together to avoid trace crossing.
+
+```cpp
+pinMode(I2S_SD_MODE, OUTPUT);
+digitalWrite(I2S_SD_MODE, HIGH);   // amp on (normal operation)
+digitalWrite(I2S_SD_MODE, LOW);    // mute / shutdown (audio ducking, power save)
+```
+
+> SD_MODE must be driven HIGH in firmware before audio playback. If the pin is left floating or driven LOW the amp stays silent.
+
+---
+
+### Second Trigger Input
+
+**PCB change required before fabrication:** Add second 3.5mm trigger jack (J9) wired to **GPIO 35 (D35)**.
+
+| Signal | Pin | Notes |
+|--------|-----|-------|
+| TRIGGER_2_IN | GPIO 35 | Secondary contact closure trigger — input-only pin |
+
+**EasyEDA change:** Add J9 (XHB-3A, matching J7b) with pin 2 (SIG) routed to ESP32 GPIO 35. GPIO 35 is input-only — no pull-up/down resistor needed on pad; use internal INPUT_PULLUP in firmware.
+
+J9 pinout matches J7b: pin 1=+3.3V, pin 2=SIG, pin 3=GND.
+
+---
+
+### I2C Expansion Header
+
+**PCB change required before fabrication:** Expose I2C bus on a dedicated header (J10, XHB-4A or JST-PH 4-pin).
+
+| Pin | Signal | Notes |
+|-----|--------|-------|
+| 1 | GND | Common ground |
+| 2 | +3.3V | Breakout power |
+| 3 | SDA (GPIO 22) | Shared with INA219 |
+| 4 | SCL (GPIO 21) | Shared with INA219 |
+
+**EasyEDA change:** Add J10 header pads tapped from the existing INA219 SDA/SCL traces. No additional routing required beyond the header footprint.
+
+Allows future I2C peripherals (OLED display, additional sensors) without a PCB revision.
+
+---
+
+### SD Card (Audio Storage Expansion)
+
+**PCB change required before fabrication:** Add micro-SD card socket using VSPI bus.
+
+| Signal | Pin | Notes |
+|--------|-----|-------|
+| SD_SCK  | GPIO 18 | VSPI clock |
+| SD_MISO | GPIO 19 | VSPI MISO |
+| SD_MOSI | GPIO 23 | VSPI MOSI |
+| SD_CS   | GPIO 5  | VSPI chip select — held HIGH at boot (safe for SD CS) |
+| SD_CD   | GPIO 36 | Card detect — active LOW, INPUT_PULLUP; input-only, no boot concerns |
+
+**EasyEDA change:** Add micro-SD socket footprint (e.g. Molex 104031-0811 or similar). Route VSPI signals to socket. Add 10kΩ pull-up on SD_CS to ensure it's HIGH during ESP32 boot strapping.
+
+Provides gigabytes of WAV storage vs ~1.5 MB on SPIFFS. Uses the Arduino `SD.h` library.
 
 ---
 
@@ -129,11 +221,26 @@ ina219.begin();
 #define UART2_RX    16
 #define UART2_TX    17
 
-// ── Trigger Input ──────────────────────────
-#define TRIGGER_IN  34
+// ── Trigger Inputs ─────────────────────────
+#define TRIGGER_1_IN  34   // primary — J7b
+#define TRIGGER_2_IN  35   // secondary — J9
 
 // ── NeoPixel ───────────────────────────────
-#define NEOPIXEL    4
+#define NEOPIXEL     4
+
+// ── Audio (MAX98357A) ───────────────────────
+#define I2S_SD_MODE  32   // OUTPUT HIGH=on, OUTPUT LOW=mute
+#define I2S_GAIN     33   // LOW=12dB, INPUT=9dB, HIGH=6dB
+
+// ── SD Card (VSPI) ─────────────────────────
+#define SD_SCK       18
+#define SD_MISO      19
+#define SD_MOSI      23
+#define SD_CS         5
+#define SD_CD        36   // active LOW, INPUT_PULLUP
+
+// ── I2C Expansion (shared with INA219) ─────
+// Exposed on J10 header — tap from INA219 traces
 
 // ── INA219 ─────────────────────────────────
 #define INA219_ADDRESS  0x40

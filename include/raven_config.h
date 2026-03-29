@@ -20,6 +20,17 @@
 #define I2S_BCLK        26
 #define I2S_LRC         27
 #define I2S_DOUT        25
+#define I2S_SD_MODE     32      // MAX98357A SD_MODE — OUTPUT HIGH=on, OUTPUT LOW=mute/shutdown
+#define I2S_GAIN        33      // MAX98357A GAIN pin — LOW=12dB, INPUT(float)=9dB, HIGH=6dB
+
+#define TRIGGER_1_IN    34      // primary trigger — 3.5mm jack J7b, GPIO input-only
+#define TRIGGER_2_IN    35      // secondary trigger — 3.5mm jack J9, GPIO input-only
+
+#define SD_SCK          18      // SPI SD card — VSPI clock
+#define SD_MISO         19      // SPI SD card — VSPI MISO
+#define SD_MOSI         23      // SPI SD card — VSPI MOSI
+#define SD_CS            5      // SPI SD card — VSPI chip select
+#define SD_CD           36      // SPI SD card — card detect (active LOW, INPUT_PULLUP)
 
 // ── SSC-32U servo channels ────────────────────────────────────────────────────
 #define CH_BEAK         0

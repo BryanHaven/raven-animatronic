@@ -32,10 +32,13 @@ ESP32-based WiFi controller for animatronic props built around the [Mr. Chicken'
 | Startup sync | All birds in a room wait for a sync message before moving to neutral |
 | Export/import config | Download full config as zip, clone to new bird by uploading |
 | OTA SPIFFS update | Currently OTA covers firmware only — add filesystem update support |
-| Physical trigger input | 3.5mm jack → GPIO 34, fires configurable sequence on contact closure |
+| Physical trigger input | 3.5mm jack → GPIO 34 (J7b), fires configurable sequence on contact closure |
+| Second trigger input | 3.5mm jack → GPIO 35 (J9), independent configurable sequence |
 | ~~Current sensing~~ | ✅ Done in v4.1.3 — INA219 on VS+ rail, live power readings via MQTT/WebSocket/HTTP |
-| Audio volume control | Configurable gain via MAX98357A GAIN pin |
-| Audio ducking | Lower ambient audio level during cue sequences |
+| Audio volume control | MAX98357A GAIN pin → GPIO 33 (D33); LOW=12dB / float=9dB / HIGH=6dB |
+| Audio ducking | MAX98357A SD_MODE → GPIO 32 (D32); firmware mute during cue sequences |
+| SD card audio storage | Micro-SD via VSPI (GPIO 18/19/23/5) — gigabytes of WAV storage vs ~1.5 MB SPIFFS |
+| I2C expansion header | J10 header tapped from INA219 SDA/SCL traces — add OLED or sensors without PCB revision |
 | Looping ambient audio | `/audio/loop` command for continuous background sound |
 | Cue numbers | Numeric `/cue` topic mapping integers to sequence names for QLab/Isadora |
 | Status LED | NeoPixel showing WiFi/MQTT/sequence state |
