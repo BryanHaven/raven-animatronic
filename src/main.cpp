@@ -14,6 +14,7 @@
 #include "raven_webui.h"        // defines wsBroadcast()
 #include "raven_mqtt.h"         // uses wsBroadcast() — after webui
 #include "raven_mdns.h"
+// raven_power.h already pulled in via raven_webui.h / raven_mqtt.h
 #include "raven_ota.h"          // OTA — after webui/mdns so hostname is set
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
@@ -56,6 +57,7 @@ void setup() {
     positionsLoad();
     servoBegin();
     audioBegin();
+    powerBegin();
     keyframesBegin();
     soundsLoad();
 

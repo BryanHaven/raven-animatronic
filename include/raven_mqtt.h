@@ -7,6 +7,7 @@
 #include "raven_audio.h"
 #include "raven_sequences.h"
 #include "raven_keyframes.h"
+#include "raven_power.h"
 
 static WiFiClient   mqttWifi;
 static PubSubClient mqttClient(mqttWifi);
@@ -33,6 +34,11 @@ void mqttPublishStatus(const String& msg) {
 
 void mqttPublishSoundList() {
     mqttPublish(tPub("sounds/list"), soundsToJson());
+}
+
+void mqttPublishPower() {
+    powerSample();
+    mqttPublish(tPub("power"), powerToJson());
 }
 
 void mqttPublishSeqList() {
@@ -111,6 +117,7 @@ void mqttCallback(char* topicRaw, byte* payload, unsigned int len) {
         if (msg == "sounds"    || msg == "all") mqttPublishSoundList();
         if (msg == "sequences" || msg == "all") mqttPublishSeqList();
         if (msg == "identity"  || msg == "all") mqttPublishIdentity();
+        if (msg == "power"     || msg == "all") mqttPublishPower();
     }
 }
 

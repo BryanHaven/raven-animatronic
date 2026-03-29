@@ -1,7 +1,7 @@
 #pragma once
 
 // ── Firmware version ──────────────────────────────────────────────────────────
-#define FW_VERSION      "4.1.0"
+#define FW_VERSION      "4.1.3"
 #define FW_BUILD_DATE   __DATE__ " " __TIME__
 
 // ── Compile-time defaults ─────────────────────────────────────────────────────
@@ -10,12 +10,16 @@
 // Edit config.json through the captive portal or the Settings page in the UI.
 
 // ── Hardware pins ─────────────────────────────────────────────────────────────
-#define SSC_TX_PIN      22
-#define SSC_RX_PIN      23
+#define SSC_TX_PIN      17
+#define SSC_RX_PIN      16
 
-#define I2S_BCLK        27
-#define I2S_LRC         14
-#define I2S_DOUT        13
+#define INA219_SDA      22
+#define INA219_SCL      21
+#define INA219_ADDR     0x40
+
+#define I2S_BCLK        26
+#define I2S_LRC         27
+#define I2S_DOUT        25
 
 // ── SSC-32U servo channels ────────────────────────────────────────────────────
 #define CH_BEAK         0

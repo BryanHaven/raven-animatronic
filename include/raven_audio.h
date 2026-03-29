@@ -166,10 +166,11 @@ void audioPlayTask(void*) {
     Serial.printf("[audio] Playing %s — %uHz %ubit %uch\n",
         path.c_str(), hdr.sampleRate, hdr.bitsPerSample, hdr.numChannels);
 
-    // Reconfigure I2S clock for this file
+    // Reconfigure I2S for this file — always 16-bit (8-bit files are upsampled)
+    i2s_start(I2S_NUM);
     i2s_set_clk(I2S_NUM,
         hdr.sampleRate,
-        (i2s_bits_per_sample_t)hdr.bitsPerSample,
+        I2S_BITS_PER_SAMPLE_16BIT,
         I2S_CHANNEL_MONO);
 
     const bool is8bit = (hdr.bitsPerSample == 8);
@@ -193,6 +194,7 @@ void audioPlayTask(void*) {
     }
 
     i2s_zero_dma_buffer(I2S_NUM);
+    i2s_stop(I2S_NUM);          // stop clock to prevent MAX98357A auto-shutdown on silence
     f.close();
     Serial.printf("[audio] Done: %s\n", path.c_str());
     audioTask = nullptr;
@@ -203,6 +205,7 @@ void audioPlay(const String& name) {
     if (audioTask) {
         vTaskDelete(audioTask);
         i2s_zero_dma_buffer(I2S_NUM);
+        i2s_stop(I2S_NUM);
         audioTask = nullptr;
     }
     audioQueued = name;
@@ -219,12 +222,19 @@ void launchSequence(const String& seq) {
 }
 
 // ── Play sound + bound sequence ───────────────────────────────────────────────
+// If the sound has a bound sequence, let the sequence own the audio (it calls
+// audioPlay internally). Only call audioPlay directly when there is no sequence,
+// to avoid two concurrent audio tasks killing each other.
 void soundPlay(const String& file) {
-    audioPlay(file);
     for (auto& e : soundLibrary) {
         if (e.file == file) {
-            launchSequence(e.sequence);
+            if (e.sequence == "none" || e.sequence.isEmpty()) {
+                audioPlay(file);
+            } else {
+                launchSequence(e.sequence);
+            }
             return;
         }
     }
+    audioPlay(file);   // file not in library — play directly
 }

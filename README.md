@@ -10,6 +10,8 @@ ESP32-based WiFi controller for animatronic props built around the [Mr. Chicken'
 
 | Version | Summary |
 | --- | --- |
+| **v4.1.3** | INA219 current monitor: real-time voltage, current (mA), and power (mW) on the +7.5V servo rail — published to `{prefix}/power` via MQTT, WebSocket `power:` push every 5 s, and `GET /api/power`; Bug fix: `soundPlay` was racing two audio tasks when a sound had a bound sequence, causing silent playback — sequence now owns its own audio |
+| **v4.1.2** | Audio fix: `i2s_set_clk` now always uses `I2S_BITS_PER_SAMPLE_16BIT` regardless of source file — 8-bit WAVs are upsampled to 16-bit before write, passing 8-bit to the I2S peripheral caused a malformed stream and MAX98357A fault; I2S clock stopped after playback to prevent amp auto-shutdown on sustained silence; GPIO pins corrected to match PCB v1.0 schematic (UART TX/RX: GPIO 17/16; I2S BCLK/LRC/DOUT: GPIO 26/27/25) |
 | **v4.1.1** | Bug fixes: watchdog API corrected for installed toolchain (`esp_task_wdt_init` replaces IDF 5.x struct API); captive portal now validates Device Name and Hostname as required fields; firmware fallback populates blank name/hostname from Device ID so mDNS always starts |
 | **v4.1** | Show hardening: OTA firmware updates over WiFi, hardware watchdog (30s), MQTT last will (`offline`/`online` on `{prefix}/status`), WiFi auto-reconnect with exponential backoff |
 | **v4.0** | Captive portal first-time setup (BirdSetup AP), runtime config.json, three-level MQTT topic hierarchy (location/room/device), Settings tab in web UI, Reset to AP mode button, identity announcement on MQTT connect |
@@ -31,7 +33,7 @@ ESP32-based WiFi controller for animatronic props built around the [Mr. Chicken'
 | Export/import config | Download full config as zip, clone to new bird by uploading |
 | OTA SPIFFS update | Currently OTA covers firmware only — add filesystem update support |
 | Physical trigger input | 3.5mm jack → GPIO 34, fires configurable sequence on contact closure |
-| Current sensing | INA219 on VS+ rail — detect stalled/disconnected servos |
+| ~~Current sensing~~ | ✅ Done in v4.1.3 — INA219 on VS+ rail, live power readings via MQTT/WebSocket/HTTP |
 | Audio volume control | Configurable gain via MAX98357A GAIN pin |
 | Audio ducking | Lower ambient audio level during cue sequences |
 | Looping ambient audio | `/audio/loop` command for continuous background sound |
@@ -152,12 +154,10 @@ SSC-32U GND  ──→  ESP32 GND    ← REQUIRED — UART won't work without th
 
 ### ESP32 → MAX98357A (I2S Audio)
 
-> **Note:** BCLK and LRC pins swapped from v4.x for PCB routing — update firmware defines.
-
 | ESP32 Pin | MAX98357A Pin | Notes |
 | --- | --- | --- |
-| GPIO 26 | BCLK | Bit clock — swapped from v4.x GPIO 27 |
-| GPIO 27 | LRC | Left/Right clock — swapped from v4.x GPIO 14 |
+| GPIO 26 | BCLK | Bit clock |
+| GPIO 27 | LRC | Left/Right clock |
 | GPIO 25 | DIN | Serial audio data |
 | 3.3V | SD_MODE | Tie high — always on |
 | 5V | VIN | Power |
@@ -169,12 +169,10 @@ SSC-32U GND  ──→  ESP32 GND    ← REQUIRED — UART won't work without th
 
 ### ESP32 → INA219 (I2C Current Monitor)
 
-> **Note:** SDA and SCL pins swapped from v4.x defaults for PCB routing — update firmware defines.
-
 | ESP32 Pin | INA219 Pin | Notes |
 | --- | --- | --- |
-| GPIO 22 | SDA | I2C data — swapped from v4.x GPIO 21 |
-| GPIO 21 | SCL | I2C clock — swapped from v4.x GPIO 22 |
+| GPIO 22 | SDA | I2C data |
+| GPIO 21 | SCL | I2C clock |
 | 3.3V | VS | Power |
 | GND | GND | Common ground |
 
@@ -403,7 +401,7 @@ All topics are relative to the device's configured prefix (e.g. `props/study/rav
 | `/sound` | `caw` | Play sound + bound sequence |
 | `/audio` | `caw` | Audio only, no sequence |
 | `/servo` | `0 1800 300` | Raw: channel, µs, time ms |
-| `/query` | `all`, `sounds`, `sequences`, `identity` | Request data |
+| `/query` | `all`, `sounds`, `sequences`, `identity`, `power` | Request data |
 
 ### Publish — Bird Sends
 
@@ -413,6 +411,7 @@ All topics are relative to the device's configured prefix (e.g. `props/study/rav
 | `/identity` | JSON: name, hostname, ip, prefix | On connect + identity query |
 | `/sounds/list` | JSON sound library | On connect + query |
 | `/sequences/list` | JSON sequence names | On connect + query |
+| `/power` | `{"available":true,"bus_v":7.42,"current_mA":123.4,"power_mW":915.2}` | On power query; WebSocket push every 5 s |
 
 ---
 
@@ -466,6 +465,7 @@ Edit all device configuration post-setup without the portal:
 | POST | `/api/sequences` | Save or update a sequence |
 | DELETE | `/api/sequences?name=x` | Delete a sequence |
 | GET | `/api/spiffs` | `{total, used, free}` bytes |
+| GET | `/api/power` | INA219 reading: `{available, bus_v, current_mA, power_mW}` |
 
 ---
 
@@ -490,7 +490,8 @@ raven-animatronic-v4/
 │   ├── raven_keyframes.h   ← Keyframe player and CRUD
 │   ├── raven_webui.h       ← ESPAsyncWebServer, WebSocket, HTTP API
 │   ├── raven_mqtt.h        ← MQTT client — runtime topic prefix, identity announce
-│   └── raven_mdns.h        ← mDNS — runtime hostname
+│   ├── raven_mdns.h        ← mDNS — runtime hostname
+│   └── raven_power.h       ← INA219 current monitor — I2C, voltage/current/power readings
 ├── pcb/
 │   ├── Gerber_PCB1_2026-03-14.zip
 │   ├── BOM_Board1_PCB1_2026-03-14.xlsx
@@ -513,7 +514,7 @@ raven-animatronic-v4/
 | `raven1.local` not found after setup | mDNS blocked on network | Use IP address shown in serial output |
 | Servos not responding | Wrong UART pins | Check GPIO 16/17 on carrier PCB v1.0 |
 | Servos jitter / ESP resets | Servo PSU on ESP32 rail | Isolate servo power to SSC-32U VS+ only |
-| No audio | I2S wiring | Check GPIO 26/27/25 — changed from v4.x |
+| No audio | I2S wiring or WAV format | Check GPIO 26/27/25; ensure WAVs are 8-bit or 16-bit mono — firmware upsamples 8-bit to 16-bit internally |
 | I2C not working | SDA/SCL swapped | GPIO 22=SDA, GPIO 21=SCL on carrier PCB v1.0 |
 | MQTT not connecting | Wrong broker / port | Check Settings tab, verify broker is reachable |
 | Multiple birds, same MQTT client ID | Not possible in v4 | Client IDs are now randomised per connection |

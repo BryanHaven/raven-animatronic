@@ -11,6 +11,7 @@
 #include "raven_audio.h"
 #include "raven_sequences.h"
 #include "raven_keyframes.h"
+#include "raven_power.h"
 
 static AsyncWebServer wsServer(80);
 static AsyncWebSocket wsSocket("/ws");
@@ -113,6 +114,8 @@ void onWsEvent(AsyncWebSocket*, AsyncWebSocketClient* client,
         client->text("livepos:"   + livePosToJson());
         client->text("config:"    + deviceConfigJson());
         client->text("version:"   + String(FW_VERSION) + " (" + String(FW_BUILD_DATE) + ")");
+        powerSample();
+        client->text("power:" + powerToJson());
     }
     else if (type == WS_EVT_DISCONNECT) {
         Serial.printf("[ws] client #%u disconnected\n", client->id());
@@ -302,6 +305,12 @@ void webuiBegin() {
         ESP.restart();
     });
 
+    // ── Power / INA219 ───────────────────────────────────────────────────────
+    wsServer.on("/api/power", HTTP_GET, [](AsyncWebServerRequest* req) {
+        powerSample();
+        req->send(200, "application/json", powerToJson());
+    });
+
     // ── WebSocket ─────────────────────────────────────────────────────────────
     wsSocket.onEvent(onWsEvent);
     wsServer.addHandler(&wsSocket);
@@ -315,4 +324,13 @@ void webuiBegin() {
                   device.mdns_hostname.c_str(), WiFi.localIP().toString().c_str());
 }
 
-void webuiLoop() { wsSocket.cleanupClients(); }
+void webuiLoop() {
+    wsSocket.cleanupClients();
+    // Broadcast power reading every 5 s if any WS clients are connected
+    static unsigned long lastPwr = 0;
+    if (wsSocket.count() > 0 && millis() - lastPwr >= 5000) {
+        lastPwr = millis();
+        powerSample();
+        wsBroadcast("power:" + powerToJson());
+    }
+}
