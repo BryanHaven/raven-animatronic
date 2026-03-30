@@ -159,6 +159,38 @@ Provides gigabytes of WAV storage vs ~1.5 MB on SPIFFS. Uses the Arduino `SD.h` 
 
 ---
 
+### 5V Power Regulator — Pololu D24V22F5 (replaces AMS1117-5.0)
+
+**PCB change required before fabrication:** Remove U4 (AMS1117-5.0) and replace with a socketed Pololu D24V22F5 5V/2.5A buck module. The AMS1117-5.0 1A limit is exceeded by the v1.1 load (ESP32 + audio amp + NeoPixels + SD card peak ~1.46A).
+
+**EasyEDA change:** Delete U4 AMS1117 symbol and its tantalum input/output caps. Place a 1×5 female header symbol (label: "Pololu D24V22F5 socket"). Add bypass caps at socket.
+
+| Socket pin | Signal | Connect to |
+|------------|--------|------------|
+| 1 | PG (Power Good) | GPIO 39 (input-only) |
+| 2 | EN (Enable) | +6V rail (always on) |
+| 3 | VIN | +6V rail (from J3) |
+| 4 | GND | GND pour |
+| 5 | VOUT | +5V net |
+
+Bypass caps to add near socket:
+- C_IN: 10µF X7R 0805 on VIN to GND (LCSC C15850)
+- C_OUT: 22µF X7R 1210 on VOUT to GND (LCSC C13585)
+- C_OUT2: 100nF X7R 0402 on VOUT to GND (LCSC C14663)
+
+Socket LCSC part: **C124418** (1×5P female header 2.54mm through-hole)
+Module: **Pololu D24V22F5** (#2858) — hand-install after JLCPCB assembly, same as ESP32 and MAX98357A breakout.
+
+> Pin 1 (PG) is marked with a white dot on the Pololu module. Verify orientation before inserting.
+
+```cpp
+#define PWR_GOOD  39   // HIGH = 5V rail OK; LOW = overload/thermal shutdown
+
+bool is5VRailOK() { return digitalRead(PWR_GOOD) == HIGH; }
+```
+
+---
+
 ## Connector Pinouts (J5 SSC-32U Cable Change)
 
 ### J5 — SSC-32U Connector (XHB-4A)
@@ -205,7 +237,7 @@ ina219.begin();
 
 ---
 
-## Complete v1.0 PCB Pin Definition Block
+## Complete v1.1 PCB Pin Definition Block
 
 ```cpp
 // ── I2S Audio ──────────────────────────────
@@ -238,6 +270,9 @@ ina219.begin();
 #define SD_MOSI      23
 #define SD_CS         5
 #define SD_CD        36   // active LOW, INPUT_PULLUP
+
+// ── Power Good (Pololu D24V22F5) ───────────
+#define PWR_GOOD     39   // HIGH = 5V rail OK; input-only
 
 // ── I2C Expansion (shared with INA219) ─────
 // Exposed on J10 header — tap from INA219 traces

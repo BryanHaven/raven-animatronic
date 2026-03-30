@@ -32,6 +32,8 @@
 #define SD_CS            5      // SPI SD card — VSPI chip select
 #define SD_CD           36      // SPI SD card — card detect (active LOW, INPUT_PULLUP)
 
+#define PWR_GOOD        39      // Pololu D24V22F5 PG — HIGH when 5V rail in regulation (input-only)
+
 // ── SSC-32U servo channels ────────────────────────────────────────────────────
 #define CH_BEAK         0
 #define CH_HEAD_PAN     1
