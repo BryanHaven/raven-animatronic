@@ -147,9 +147,9 @@ Allows future I2C peripherals (OLED display, additional sensors) without a PCB r
 
 | Signal | Pin | Notes |
 |--------|-----|-------|
-| SD_SCK  | GPIO 18 | VSPI clock |
-| SD_MISO | GPIO 19 | VSPI MISO |
-| SD_MOSI | GPIO 23 | VSPI MOSI |
+| SD_SCK  | GPIO 19 | VSPI clock |
+| SD_MISO | GPIO 23 | VSPI MISO |
+| SD_MOSI | GPIO 18 | VSPI MOSI |
 | SD_CS   | GPIO 5  | VSPI chip select — held HIGH at boot (safe for SD CS) |
 | SD_CD   | GPIO 36 | Card detect — active LOW, INPUT_PULLUP; input-only, no boot concerns |
 
@@ -265,9 +265,9 @@ ina219.begin();
 #define I2S_GAIN     33   // LOW=12dB, INPUT=9dB, HIGH=6dB
 
 // ── SD Card (VSPI) ─────────────────────────
-#define SD_SCK       18
-#define SD_MISO      19
-#define SD_MOSI      23
+#define SD_SCK       19
+#define SD_MISO      23
+#define SD_MOSI      18
 #define SD_CS         5
 #define SD_CD        36   // active LOW, INPUT_PULLUP
 

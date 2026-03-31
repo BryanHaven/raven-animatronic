@@ -162,11 +162,12 @@ SSC-32U GND  ──→  ESP32 GND    ← REQUIRED — UART won't work without th
 | GPIO 26 | BCLK | Bit clock |
 | GPIO 27 | LRC | Left/Right clock |
 | GPIO 25 | DIN | Serial audio data |
-| 3.3V | SD_MODE | Tie high — always on |
+| GPIO 32 | SD_MODE | Drive HIGH=amp on, LOW=mute/shutdown (PCB v1.1) |
+| GPIO 33 | GAIN | LOW=12dB · float=9dB · HIGH=6dB (PCB v1.1) |
 | 5V | VIN | Power |
 | GND | GND | Common ground |
 
-**GAIN pin:** Float = 9dB (default) · GND = 12dB · 3.3V = 6dB
+> **PCB v1.0:** SD_MODE was tied to 3.3V (always on) and GAIN was left floating (9dB). PCB v1.1 routes both to GPIO for firmware control.
 
 **Speaker (PID:4445):** connect bare wires directly to OUT+ and OUT−. No capacitor needed.
 
@@ -218,10 +219,13 @@ PCB design files are in the `/pcb` directory:
 
 | File | Description |
 | --- | --- |
-| `Gerber_PCB1_2026-03-14.zip` | Gerber files for JLCPCB fabrication |
-| `BOM_Board1_PCB1_2026-03-14.xlsx` | Bill of Materials |
+| `Gerber_PCB1_2026-03-14.zip` | Gerber files — PCB v1.0 (superseded, for reference) |
+| `BOM_Board1_PCB1_2026-03-14.xlsx` | Bill of Materials — PCB v1.0 |
 | `CPL_JLCPCB.xlsx` | Pick and Place file for JLCPCB assembly |
-| `firmware-pcb-v1-notes.md` | Full pin change notes for v5.x firmware |
+| `firmware-pcb-v1-notes.md` | Full pin assignments and EasyEDA change notes for PCB v1.1 |
+| `pcb-v1.2-power-brief.md` | Pololu D24V22F5 5V regulator design brief |
+
+> **PCB v1.1** (not yet ordered as of 2026-03-31) adds: micro-SD socket, second trigger jack (J9), I2C expansion header (J10), GPIO routing for MAX98357A GAIN/SD_MODE, Pololu D24V22F5 5V/2.5A buck regulator replacing the AMS1117-5.0 LDO, and Power Good signal on GPIO 39. New Gerbers/BOM/CPL will be added to this directory after fabrication export.
 
 **Board specs:** 100×60mm · 2-layer · 3mm corner radius · M3 corner mounting holes
 
@@ -232,12 +236,15 @@ PCB design files are in the `/pcb` directory:
 | J3 | XHB-3A | +7.5V power in (pin 1=+7.5V, pin 2=GND, pin 3=NC) |
 | J4 | XHB-2A | +5V power in (pin 1=+5V, pin 2=GND) |
 | J5 | XHB-4A | SSC-32U (pin 1=GND, pin 2=RX, pin 3=TX, pin 4=+7.5V) |
-| J7b | XHB-3A | Trigger jack landing (pin 1=+3.3V, pin 2=SIG, pin 3=GND) |
-| J8 | XHB-3A | NeoPixel (pin 1=+5V, pin 2=DAT, pin 3=GND) |
+| J7b | XHB-3A | Trigger 1 jack (pin 1=+3.3V, pin 2=SIG→GPIO 34, pin 3=GND) |
+| J8 | XHB-3A | NeoPixel (pin 1=+5V, pin 2=DAT→GPIO 4, pin 3=GND) |
+| J9 | XHB-3A | Trigger 2 jack (pin 1=+3.3V, pin 2=SIG→GPIO 35, pin 3=GND) — PCB v1.1 |
+| J10 | XHB-4A | I2C expansion (pin 1=GND, pin 2=+3.3V, pin 3=SDA/GPIO 22, pin 4=SCL/GPIO 21) — PCB v1.1 |
 
 **Hand-install after JLCPCB assembly:**
 - DOIT ESP32 DevKit V1 30-pin (into H1/H2 female headers — LCSC C7499333)
 - Adafruit MAX98357A breakout PID:3006 (into U2 header, secured with M2.5 screws at U8/U9)
+- Pololu D24V22F5 5V/2.5A buck module into U4 socket (PCB v1.1) — pin 1 marked with white dot
 
 ---
 
@@ -494,12 +501,15 @@ raven-animatronic-v4/
 │   ├── raven_webui.h       ← ESPAsyncWebServer, WebSocket, HTTP API
 │   ├── raven_mqtt.h        ← MQTT client — runtime topic prefix, identity announce
 │   ├── raven_mdns.h        ← mDNS — runtime hostname
+│   ├── raven_ota.h         ← OTA firmware update over WiFi
+│   ├── raven_watchdog.h    ← Hardware watchdog (30s timeout)
 │   └── raven_power.h       ← INA219 current monitor — I2C, voltage/current/power readings
 ├── pcb/
-│   ├── Gerber_PCB1_2026-03-14.zip
+│   ├── Gerber_PCB1_2026-03-14.zip    ← PCB v1.0 Gerbers (for reference)
 │   ├── BOM_Board1_PCB1_2026-03-14.xlsx
 │   ├── CPL_JLCPCB.xlsx
-│   └── firmware-pcb-v1-notes.md
+│   ├── firmware-pcb-v1-notes.md      ← Pin assignments and EasyEDA notes for v1.1
+│   └── pcb-v1.2-power-brief.md       ← Pololu D24V22F5 regulator design brief
 └── src/
     └── main.cpp            ← Boot flow: captive portal check → WiFi → full init
 ```
@@ -517,7 +527,7 @@ raven-animatronic-v4/
 | `raven1.local` not found after setup | mDNS blocked on network | Use IP address shown in serial output |
 | Servos not responding | Wrong UART pins | Check GPIO 16/17 on carrier PCB v1.0 |
 | Servos jitter / ESP resets | Servo PSU on ESP32 rail | Isolate servo power to SSC-32U VS+ only |
-| No audio | I2S wiring or WAV format | Check GPIO 26/27/25; ensure WAVs are 8-bit or 16-bit mono — firmware upsamples 8-bit to 16-bit internally |
+| No audio | I2S wiring or WAV format | Check GPIO 26/27/25; ensure WAVs are 8-bit or 16-bit mono — firmware upsamples 8-bit to 16-bit internally; on PCB v1.1 SD_MODE (GPIO 32) must be driven HIGH before playback |
 | I2C not working | SDA/SCL swapped | GPIO 22=SDA, GPIO 21=SCL on carrier PCB v1.0 |
 | MQTT not connecting | Wrong broker / port | Check Settings tab, verify broker is reachable |
 | Multiple birds, same MQTT client ID | Not possible in v4 | Client IDs are now randomised per connection |

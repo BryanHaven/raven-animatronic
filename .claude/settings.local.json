@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(~/.platformio/penv/Scripts/pio run:*)",
+      "WebFetch(domain:www.lcsc.com)",
+      "WebFetch(domain:lcsc.com)",
+      "WebFetch(domain:datasheet.lcsc.com)"
+    ]
+  }
+}

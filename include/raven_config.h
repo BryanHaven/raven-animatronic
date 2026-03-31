@@ -26,9 +26,9 @@
 #define TRIGGER_1_IN    34      // primary trigger — 3.5mm jack J7b, GPIO input-only
 #define TRIGGER_2_IN    35      // secondary trigger — 3.5mm jack J9, GPIO input-only
 
-#define SD_SCK          18      // SPI SD card — VSPI clock
-#define SD_MISO         19      // SPI SD card — VSPI MISO
-#define SD_MOSI         23      // SPI SD card — VSPI MOSI
+#define SD_SCK          19      // SPI SD card — VSPI clock
+#define SD_MISO         23      // SPI SD card — VSPI MISO
+#define SD_MOSI         18      // SPI SD card — VSPI MOSI
 #define SD_CS            5      // SPI SD card — VSPI chip select
 #define SD_CD           36      // SPI SD card — card detect (active LOW, INPUT_PULLUP)
 
