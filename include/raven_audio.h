@@ -4,6 +4,7 @@
 #include <ArduinoJson.h>
 #include <driver/i2s.h>
 #include "raven_config.h"
+#include "raven_sd.h"
 
 // Forward declarations
 extern void seqCaw();
@@ -144,7 +145,14 @@ void audioPlayTask(void*) {
     String path = "/" + audioQueued + ".wav";
     audioQueued  = "";
 
-    File f = SPIFFS.open(path, "r");
+    // SD first, SPIFFS fallback
+    File f;
+    if (sdExists(path)) {
+        f = sdOpen(path, FILE_READ);
+        Serial.printf("[audio] SD: %s\n", path.c_str());
+    } else {
+        f = SPIFFS.open(path, "r");
+    }
     if (!f) {
         Serial.printf("[audio] Not found: %s\n", path.c_str());
         audioTask = nullptr;

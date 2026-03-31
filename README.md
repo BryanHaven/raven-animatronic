@@ -10,6 +10,7 @@ ESP32-based WiFi controller for animatronic props built around the [Mr. Chicken'
 
 | Version | Summary |
 | --- | --- |
+| **v4.1.4** | SD card audio storage: WAV files served from micro-SD (VSPI — GPIO 19/23/18/5) with automatic SPIFFS fallback; uploads routed to SD when card is mounted; `GET /api/sd` returns mount status and capacity; `SD_USE_CD` build flag enables GPIO 36 card-detect for PCB (disabled by default for breakout testing) |
 | **v4.1.3** | INA219 current monitor: real-time voltage, current (mA), and power (mW) on the +7.5V servo rail — published to `{prefix}/power` via MQTT, WebSocket `power:` push every 5 s, and `GET /api/power`; Bug fix: `soundPlay` was racing two audio tasks when a sound had a bound sequence, causing silent playback — sequence now owns its own audio |
 | **v4.1.2** | Audio fix: `i2s_set_clk` now always uses `I2S_BITS_PER_SAMPLE_16BIT` regardless of source file — 8-bit WAVs are upsampled to 16-bit before write, passing 8-bit to the I2S peripheral caused a malformed stream and MAX98357A fault; I2S clock stopped after playback to prevent amp auto-shutdown on sustained silence; GPIO pins corrected to match PCB v1.0 schematic (UART TX/RX: GPIO 17/16; I2S BCLK/LRC/DOUT: GPIO 26/27/25) |
 | **v4.1.1** | Bug fixes: watchdog API corrected for installed toolchain (`esp_task_wdt_init` replaces IDF 5.x struct API); captive portal now validates Device Name and Hostname as required fields; firmware fallback populates blank name/hostname from Device ID so mDNS always starts |
@@ -37,7 +38,7 @@ ESP32-based WiFi controller for animatronic props built around the [Mr. Chicken'
 | ~~Current sensing~~ | ✅ Done in v4.1.3 — INA219 on VS+ rail, live power readings via MQTT/WebSocket/HTTP |
 | Audio volume control | MAX98357A GAIN pin → GPIO 33 (D33); LOW=12dB / float=9dB / HIGH=6dB |
 | Audio ducking | MAX98357A SD_MODE → GPIO 32 (D32); firmware mute during cue sequences |
-| SD card audio storage | Micro-SD via VSPI (GPIO 18/19/23/5) — gigabytes of WAV storage vs ~1.5 MB SPIFFS |
+| ~~SD card audio storage~~ | ✅ Done in v4.1.4 — WAV files played from SD with SPIFFS fallback; uploads go to SD when mounted; `GET /api/sd`; `SD_USE_CD` flag for PCB card-detect |
 | I2C expansion header | J10 header tapped from INA219 SDA/SCL traces — add OLED or sensors without PCB revision |
 | Looping ambient audio | `/audio/loop` command for continuous background sound |
 | Cue numbers | Numeric `/cue` topic mapping integers to sequence names for QLab/Isadora |
@@ -183,6 +184,21 @@ SSC-32U GND  ──→  ESP32 GND    ← REQUIRED — UART won't work without th
 I2C address: **0x40** (A0 and A1 tied to GND)
 
 Shunt resistor R_SHUNT: 0.1Ω 2W 2512 on +7.5V rail between J3 and J5.
+
+### ESP32 → Micro-SD Card (SPI)
+
+> **PCB v1.1:** micro-SD socket routed directly on-board. For breadboard testing use an [Adafruit MicroSD Breakout Board+ (PID:254)](https://www.adafruit.com/product/254) — power from 5V, SPI signals at 3.3V (onboard level shifter).
+
+| ESP32 Pin | Breakout Pin | Notes |
+| --- | --- | --- |
+| GPIO 19 | CLK | VSPI clock |
+| GPIO 23 | DO (MISO) | VSPI MISO |
+| GPIO 18 | DI (MOSI) | VSPI MOSI |
+| GPIO 5 | CS | VSPI chip select |
+| GND | GND | Common ground |
+| 5V (VIN) | 5V | Breakout has onboard 3.3V regulator |
+
+> The breakout has no card-detect pin. For PCB builds with a CD circuit on GPIO 36, add `-D SD_USE_CD` to `build_flags` in `platformio.ini` to enable the card-detect check at boot.
 
 ### NeoPixel Chain
 
@@ -433,7 +449,7 @@ Sequences, head D-pad, beak/wings, body bob, raw servo sliders, and custom keyfr
 
 ### Sounds Tab
 
-Upload WAV files via drag-and-drop, assign bound sequences, manage SPIFFS storage.
+Upload WAV files via drag-and-drop, assign bound sequences. Files are written to the SD card when one is mounted, otherwise to SPIFFS. Playback always tries SD first and falls back to SPIFFS automatically.
 
 ### Calibrate Tab
 
@@ -475,6 +491,7 @@ Edit all device configuration post-setup without the portal:
 | POST | `/api/sequences` | Save or update a sequence |
 | DELETE | `/api/sequences?name=x` | Delete a sequence |
 | GET | `/api/spiffs` | `{total, used, free}` bytes |
+| GET | `/api/sd` | `{mounted, total, used, free}` in KB — `mounted: false` if no card |
 | GET | `/api/power` | INA219 reading: `{available, bus_v, current_mA, power_mW}` |
 
 ---
@@ -495,7 +512,8 @@ raven-animatronic-v4/
 │   ├── raven_captive.h     ← Captive portal — AP mode, DNS server, setup page
 │   ├── raven_positions.h   ← Load/save calibrated servo positions
 │   ├── raven_servo.h       ← SSC-32U UART and named moves
-│   ├── raven_audio.h       ← I2S audio driver and sound library
+│   ├── raven_sd.h          ← SD card init, helpers, status JSON (SD_USE_CD flag for PCB card-detect)
+│   ├── raven_audio.h       ← I2S audio driver and sound library — plays from SD first, SPIFFS fallback
 │   ├── raven_sequences.h   ← Built-in sequence animations
 │   ├── raven_keyframes.h   ← Keyframe player and CRUD
 │   ├── raven_webui.h       ← ESPAsyncWebServer, WebSocket, HTTP API
@@ -533,6 +551,9 @@ raven-animatronic-v4/
 | Multiple birds, same MQTT client ID | Not possible in v4 | Client IDs are now randomised per connection |
 | Need to change WiFi after setup | — | Settings tab → update SSID/password → Save (auto-reboots) |
 | Completely stuck / wrong config | — | Settings tab → Reset to Setup AP |
+| SD card not mounting | No card, wiring error, or card not FAT32 | Check serial — `[sd] Mount failed` means card present but unreadable; format as FAT32 |
+| SD card not detected on PCB | `SD_USE_CD` flag reads GPIO 36 — floating or no card | Add `-D SD_USE_CD` to `build_flags` only after PCB v1.1 with CD circuit is assembled |
+| Audio plays from SPIFFS despite card mounted | WAV not found at `/<name>.wav` on SD root | SD and SPIFFS paths are identical — copy WAV files to SD root |
 
 ---
 

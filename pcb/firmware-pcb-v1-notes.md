@@ -151,11 +151,21 @@ Allows future I2C peripherals (OLED display, additional sensors) without a PCB r
 | SD_MISO | GPIO 23 | VSPI MISO |
 | SD_MOSI | GPIO 18 | VSPI MOSI |
 | SD_CS   | GPIO 5  | VSPI chip select — held HIGH at boot (safe for SD CS) |
-| SD_CD   | GPIO 36 | Card detect — active LOW, INPUT_PULLUP; input-only, no boot concerns |
+| SD_CD   | GPIO 36 | Card detect — active LOW, hardware pull-up required (GPIO 36 is input-only, no internal pull-up) |
 
-**EasyEDA change:** Add micro-SD socket footprint (e.g. Molex 104031-0811 or similar). Route VSPI signals to socket. Add 10kΩ pull-up on SD_CS to ensure it's HIGH during ESP32 boot strapping.
+**EasyEDA change:** Add micro-SD socket footprint (e.g. Molex 104031-0811 or similar). Route VSPI signals to socket. Add 10kΩ pull-up on SD_CS to ensure it's HIGH during ESP32 boot strapping. Add 10kΩ pull-up on SD_CD to 3.3V (active LOW — card present pulls to GND).
 
 Provides gigabytes of WAV storage vs ~1.5 MB on SPIFFS. Uses the Arduino `SD.h` library.
+
+**Firmware status:** Implemented in v4.1.4 (`raven_sd.h`). WAV playback checks SD first and falls back to SPIFFS. Uploads go to SD when mounted. `GET /api/sd` returns mount status and capacity.
+
+**Card-detect build flag:** The CD check is disabled by default so the firmware works with breakout boards that have no CD pin (e.g. Adafruit #254). Enable it for PCB builds by adding `-D SD_USE_CD` to `build_flags` in `platformio.ini`:
+
+```ini
+build_flags =
+  -D CORE_DEBUG_LEVEL=0
+  -D SD_USE_CD          ; enable GPIO 36 card-detect — PCB v1.1 only
+```
 
 ---
 
@@ -269,7 +279,7 @@ ina219.begin();
 #define SD_MISO      23
 #define SD_MOSI      18
 #define SD_CS         5
-#define SD_CD        36   // active LOW, INPUT_PULLUP
+#define SD_CD        36   // active LOW, hardware pull-up on PCB (GPIO 36 input-only)
 
 // ── Power Good (Pololu D24V22F5) ───────────
 #define PWR_GOOD     39   // HIGH = 5V rail OK; input-only
@@ -302,6 +312,6 @@ All PCB design files are in the `/pcb` directory of the repository:
 
 ---
 
-*Generated: 2026-03-15*
+*Generated: 2026-03-31*
 *PCB Design: Bryan Haven*
 *Project: Raven Animatronic Controller v5.x*

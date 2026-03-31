@@ -3,6 +3,7 @@
 #include <SPIFFS.h>
 
 #include "raven_config.h"
+#include "raven_sd.h"           // SD card — before audio (audio includes it too)
 #include "raven_device.h"       // load config.json — must be first
 #include "raven_captive.h"      // AP mode + portal + wifiConnect + wifiReconnectLoop
 #include "raven_watchdog.h"     // hardware watchdog — armed after WiFi connects
@@ -27,6 +28,7 @@ void setup() {
         Serial.println("[spiffs] Mount failed — halting");
         while (true) delay(1000);
     }
+    sdBegin();      // optional — continues if no card present
 
     // ── Load device config (WiFi, MQTT, identity) ─────────────────────────────
     bool configured = deviceConfigLoad();

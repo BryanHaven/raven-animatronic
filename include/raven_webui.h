@@ -8,7 +8,7 @@
 #include "raven_device.h"
 #include "raven_positions.h"
 #include "raven_servo.h"
-#include "raven_audio.h"
+#include "raven_audio.h"    // includes raven_sd.h
 #include "raven_sequences.h"
 #include "raven_keyframes.h"
 #include "raven_power.h"
@@ -154,7 +154,9 @@ void webuiBegin() {
     wsServer.on("/api/sounds", HTTP_DELETE, [](AsyncWebServerRequest* req) {
         if (!req->hasParam("file")) { req->send(400); return; }
         String file = req->getParam("file")->value();
-        if (SPIFFS.exists("/" + file + ".wav")) SPIFFS.remove("/" + file + ".wav");
+        String wavPath = "/" + file + ".wav";
+        sdRemove(wavPath);
+        if (SPIFFS.exists(wavPath)) SPIFFS.remove(wavPath);
         soundsRemove(file);
         wsBroadcast("sounds:" + soundsToJson());
         req->send(200, "application/json", "{\"ok\":true}");
@@ -174,7 +176,13 @@ void webuiBegin() {
                 if (uploadName.endsWith(".wav") || uploadName.endsWith(".WAV"))
                     uploadName = uploadName.substring(0, uploadName.length() - 4);
                 uploadName.replace(" ", "_");
-                uploadFile = SPIFFS.open("/" + uploadName + ".wav", "w");
+                String dest = "/" + uploadName + ".wav";
+                if (sdMounted)
+                    uploadFile = sdOpen(dest, FILE_WRITE);
+                else
+                    uploadFile = SPIFFS.open(dest, "w");
+                Serial.printf("[upload] %s → %s\n",
+                    sdMounted ? "SD" : "SPIFFS", dest.c_str());
             }
             if (uploadFile) uploadFile.write(data, len);
             if (final) {
@@ -244,6 +252,11 @@ void webuiBegin() {
             "{\"total\":" + String(total) +
             ",\"used\":"  + String(used)  +
             ",\"free\":"  + String(total - used) + "}");
+    });
+
+    // ── SD card info ──────────────────────────────────────────────────────────
+    wsServer.on("/api/sd", HTTP_GET, [](AsyncWebServerRequest* req) {
+        req->send(200, "application/json", sdStatusJson());
     });
 
     // ── Firmware info ─────────────────────────────────────────────────────────
